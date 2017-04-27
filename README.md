@@ -1,7 +1,7 @@
 # GoForCP
-Implementation of simple Clinical Programming outputs in Go
+Implementation of simple Clinical Programming outputs in Go.
 
-Traditionally, Clinical (sometimes callsed Statistical) Programming departments use SAS
+Traditionally, Clinical (sometimes called Statistical) Programming departments use SAS
 for Data Management, Summary and Reporting. This is the final leg in a set of 3 small projects to
 create typical Clinical Programming (CP) outputs using other (open source) languages.
 
