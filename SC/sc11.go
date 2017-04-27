@@ -27,6 +27,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"log"
 	"math/rand"
 	"os"
@@ -59,6 +60,9 @@ var baseDate = time.Date(2010, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 // The SITEID is chosen from one of these 5 values
 var siteids = []string{"1", "2", "3", "4", "5"}
+
+// The program will be run with a flag to specify the output file
+var outfile = flag.String("o", "sc.csv", "Name of output file")
 
 // This pads the string in the 1st arg to the length
 // in the 3rd arg with the char in the 2nd arg
@@ -135,6 +139,8 @@ func endDate(r int, e int, d time.Time) time.Time {
 }
 
 func main() {
+	// Trap output file name
+	flag.Parse()
 
 	// Create slice of pointers to Subject types
 	sSubj := make([]*Subject, nSubj)
@@ -168,7 +174,7 @@ func main() {
 	// Could substitute rectype=0 ref dates with missing strings
 	// but what would happen when the data is read into a
 	// struct for further processing??
-	fo, err := os.Create("output14.txt")
+	fo, err := os.Create(*outfile)
 	if err != nil {
 		log.Fatal(err)
 	}
