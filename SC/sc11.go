@@ -141,7 +141,7 @@ func main() {
 
 	for ii := 0; ii < nSubj; ii++ {
 
-		subjid := leftPad2Len(strconv.Itoa(ii), "0", 6)
+		subjid := leftPad2Len(strconv.Itoa(ii+1), "0", 6)
 		siteid := leftPad2Len(choice(siteids), "0", 4)
 		usubjsl := []string{studyid, siteid, subjid}
 		usubjid := strings.Join(usubjsl, "-")
