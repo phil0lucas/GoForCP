@@ -29,6 +29,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"flag"
 )
 
 // This will mirror the metadata above with more natural types
@@ -41,16 +42,19 @@ type dmrec struct {
 	rfstdtc time.Time
 }
 
-var infile = "output14.txt"
+// The program will be run with flags to specify the input & output files
+var infile = flag.String("i", "../SC/sc.csv", "Name of input file")
+var outfile = flag.String("o", "dm.csv", "Name of output file")
 
 const (
 	domain = "DM"
 )
 
 func main() {
-
+	flag.Parse()
+	
 	// open the file and pass it to a Scanner object
-	file, err := os.Open(infile)
+	file, err := os.Open(*infile)
 	if err != nil {
 		panic(fmt.Sprintf("error opening %s: %v", infile, err))
 	}
@@ -72,7 +76,8 @@ func main() {
 		usubjid := strings.Split(str, ",")[3]
 		subjid := strings.Split(str, ",")[1]
 		siteid := strings.Split(str, ",")[2]
-		rfstdtc := time.Parse("2006-02-01", (strings.Split(str, ",")[7]))
+		rfstdtc, _ := time.Parse(time.RFC3339, strings.Split(str, ",")[7])
+		fmt.Println(rfstdtc)
 		dm = append(dm, &dmrec{
 			studyid: studyid,
 			domain:  domain,
@@ -80,6 +85,6 @@ func main() {
 			subjid: subjid,
 			siteid: siteid,
 			rfstdtc: rfstdtc})
-		fmt.Println(*dm[i])
+			fmt.Println(*dm[i])
 	}
 }
