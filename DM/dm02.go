@@ -30,6 +30,7 @@ import (
 	"strings"
 	"time"
 	"flag"
+	"math/rand"
 )
 
 // This will mirror the metadata above with more natural types
@@ -40,15 +41,44 @@ type dmrec struct {
 	subjid  string
 	siteid  string
 	rfstdtc time.Time
+	rfendtc time.Time
+	dmdtc   time.Time
+	invid	string
+	invname string
+	country string
+	ageu	string
+	age		int
 }
 
 // The program will be run with flags to specify the input & output files
 var infile = flag.String("i", "../SC/sc.csv", "Name of input file")
 var outfile = flag.String("o", "dm.csv", "Name of output file")
+var invid = map[int]string{0:"AAA", 1:"BBB", 2:"CCC", 3:"DDD", 4:"EEE"}
+var invnm = map[int]string{0:"Smith", 1:"Jones", 2:"Robinson", 3:"Brown", 4:"Green"}
+var country = map[int]string{1:"GBR", 2:"USA", 3:"FRA", 4:"GER", 5:"SWE"}
 
 const (
-	domain = "DM"
+	domain 	= "DM"
+	ageu	=	"Years"
 )
+
+func getInv() (string, string) {
+	rand.Seed(time.Now().UTC().UnixNano())
+	key := rand.Intn(len(invid))
+	return invid[key], invnm[key]
+}
+
+func getCty() string{
+	rand.Seed(time.Now().UTC().UnixNano())
+	key := rand.Intn(len(country))
+	return country[key]
+}
+
+// min age = 20, max age = 80
+func getAge() int {
+	rand.Seed(time.Now().UTC().UnixNano())
+	return rand.Intn(59) + 20
+}
 
 func main() {
 	flag.Parse()
@@ -76,15 +106,26 @@ func main() {
 		usubjid := strings.Split(str, ",")[3]
 		subjid := strings.Split(str, ",")[1]
 		siteid := strings.Split(str, ",")[2]
-		rfstdtc, _ := time.Parse(time.RFC3339, strings.Split(str, ",")[7])
-		fmt.Println(rfstdtc)
+		rfstdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[7])
+		rfendtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[8])
+		dmdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[5])
+		invid, invname := getInv()
+		country := getCty()
+		age := getAge()
 		dm = append(dm, &dmrec{
 			studyid: studyid,
 			domain:  domain,
 			usubjid: usubjid,
 			subjid: subjid,
 			siteid: siteid,
-			rfstdtc: rfstdtc})
+			rfstdtc: rfstdtc,
+			rfendtc: rfendtc,
+			dmdtc: dmdtc,
+			invid: invid,
+			invname: invname,
+			country: country,
+			ageu: ageu,
+			age: age})
 			fmt.Println(*dm[i])
 	}
 }
