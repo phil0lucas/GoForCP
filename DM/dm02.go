@@ -6,20 +6,20 @@
 // - USUBJID Char 18 STUDYID-SITEID-SUBJID Unique Subject Identifier
 // - SUBJID  Char 6  Subject Identifier
 // - SITEID  Char 4  Site Identifier
-// - RFSTDTC Char 10 ISO8601 First date of study med exposure
-// - RFENDTC Char 10 ISO8601 Last date of study med exposure
-// - DMDTC   Char 10 ISO8601 Date/Time of Collection
+// - RFSTDTC Date 10 ISO8601 First date of study med exposure
+// - RFENDTC Date 10 ISO8601 Last date of study med exposure
+// - DMDTC   Date 10 ISO8601 Date/Time of Collection
 // - INVID   Char 3  Investigator code
 // - INVNAME Char 8  Investigator Name
 // - COUNTRY Char 3  ISO3166 Country code
-// - BRTHDTC Char 10 ISO8601 Subjects date of birth
-// - AGE	 Char 2  Subject's age (min 20, Max 80)
+// - BRTHDTC Date 10 ISO8601 Subjects date of birth
+// - AGE	 Num     Subject's age (min 20, Max 80)
 // - AGEU    Char 5  (constant) Age units
 // - SEX     Char 1  Subject's gender ((M/F)
 // - RACE    Char 5  Subject's race (White, Black, Asian)
-// - ARMCD   Char 1  Treatment Arm code
+// - ARMCD   Num     Treatment Arm code
 // - ARM     Char 7  Treatment Arm
-// - DMDY    Char 3  Study Day of collection
+// - DMDY    Num     Study Day of collection
 
 package main
 
