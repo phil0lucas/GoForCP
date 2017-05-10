@@ -103,13 +103,6 @@ func getRace() string {
 	return race[rand.Intn(len(race))]	
 }
 
-func getArm() (int, string) {
-	rand.Seed(time.Now().UTC().UnixNano())
-	armcd := rand.Intn(len(arm))
-	arm := arm[armcd]
-	return armcd, arm
-}
-
 func getBday(dmdtc time.Time, age int) time.Time {
 	// Birth date is recorded at screening, which is DMDTC here.
 	// Having randomly generated an age, calculate the last possible 
@@ -164,7 +157,8 @@ func main() {
 		//fmt.Println("Last possible birthdate: " + _bdate + "Age " + _age + " at " + _dmdtc)
 		brthdtc := getBday(dmdtc, age)
 		sex := getSex()
-		armcd, arm := getArm()
+		armcd, _ := strconv.Atoi(strings.Split(str, ",")[9])
+		arm := strings.Split(str, ",")[10]
 		
 		dm = append(dm, &dmrec{
 			studyid: studyid,

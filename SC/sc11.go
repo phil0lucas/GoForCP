@@ -22,6 +22,8 @@
 // - DMDTC   Char ISO8601 Date/Time of Collection
 // - RECTYPE Num  0=SF, 1=WD, 2=Completer
 // - ENDV    Num  Last visit attended in study. RECTYPE=0 records will have 0 for this.
+// - ARMCD   Num     Treatment Arm code
+// - ARM     Char 7  Treatment Arm
 
 package main
 
@@ -46,6 +48,8 @@ type Subject struct {
 	endv    int
 	rfstdtc time.Time
 	rfendtc time.Time
+	armcd	int
+	arm		string	
 }
 
 // Constants can only be numbers, strings or boolean
@@ -63,6 +67,9 @@ var siteids = []string{"1", "2", "3", "4", "5"}
 
 // The program will be run with a flag to specify the output file
 var outfile = flag.String("o", "sc.csv", "Name of output file")
+
+// To allow a random choice of arm
+var arm = map[int]string{0:"Placebo", 1:"Active"}
 
 // This pads the string in the 1st arg to the length
 // in the 3rd arg with the char in the 2nd arg
@@ -138,6 +145,13 @@ func endDate(r int, e int, d time.Time) time.Time {
 	}
 }
 
+func getArm() (int, string) {
+	rand.Seed(time.Now().UTC().UnixNano())
+	armcd := rand.Intn(len(arm))
+	arm := arm[armcd]
+	return armcd, arm
+}
+
 func main() {
 	// Trap output file name
 	flag.Parse()
@@ -156,6 +170,7 @@ func main() {
 		rfstdtc := startDate(rectype, dmdtc)
 		endv := endv(rectype)
 		rfendtc := endDate(rectype, endv, dmdtc)
+		armcd, arm := getArm()
 
 		sSubj[ii] = &Subject{
 			studyid,
@@ -167,6 +182,8 @@ func main() {
 			endv,
 			rfstdtc,
 			rfendtc,
+			armcd,
+			arm,
 		}
 	}
 
@@ -194,7 +211,9 @@ func main() {
 				sSubj[ii].dmdtc.Format("2006-01-02") + "," +
 				strconv.Itoa(sSubj[ii].endv) + "," +
 				sSubj[ii].rfstdtc.Format("2006-01-02") + "," +
-				sSubj[ii].rfendtc.Format("2006-01-02") +
+				sSubj[ii].rfendtc.Format("2006-01-02") + "," +
+				strconv.Itoa(sSubj[ii].armcd) + "," +
+				sSubj[ii].arm +
 				"\n")
 
 		if err != nil {

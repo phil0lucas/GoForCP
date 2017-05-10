@@ -28,7 +28,7 @@ import (
 	"strings"
 	"time"
 	"flag"
-//	"math/rand"
+	"math/rand"
 	"strconv"
 //	"log"
 )
@@ -56,7 +56,7 @@ type vsrec struct {
 
 // The program will be run with flags to specify the input & output files
 var infile = flag.String("i", "../SC/sc.csv", "Name of input file")
-var outfile = flag.String("o", "vs.csv", "Name of output file")
+var outfile = flag.String("o", "vs2.csv", "Name of output file")
 var testcodes = []string{"SBP", "DBP", "HR"}
 var testnames = []string{"Systolic Blood Pressure", "Diastolic Blood Pressure", "Heart Rate"}
 
@@ -64,9 +64,34 @@ const (
 	domain 	= "VS"
 )
 
-func genBaseline(tcode string, visit int) float64 {
-	if visit == 0 {
-		return 100.00
+func randValue(max, min int) float64 {
+	rand.Seed(time.Now().UTC().UnixNano())
+	return float64(rand.Intn(max - min) + min)
+}
+
+
+func genBaseline(tcode string) float64 {
+	switch tcode {
+		// return rand.Intn(max - min) + min
+		case "HR":
+			return randValue(120, 70)
+		case "SBP":
+			return randValue(160, 120)
+		case "DBP":
+			return randValue(120, 90)
+	}
+	return 0.0
+}
+
+func getOrigRes(baseline float64, vstestcd string, visitnum int, armcd int) float64 {
+	if armcd == 0 {
+		if visitnum == 0 {
+			return baseline
+		} else {
+			return baseline + randValue(5, -5)
+		}
+	} else {
+		return 200.00
 	}
 }
 
@@ -98,31 +123,43 @@ func main() {
 		siteid := strings.Split(str, ",")[2]
 		endv := strings.Split(str, ",")[6]
 		endvn, _ := strconv.Atoi(endv)
-		//fmt.Println(endvn)
+		armcd, _ := strconv.Atoi(strings.Split(str, ",")[9])
+		fmt.Printf("Subject %s\n", usubjid)
 		
 		// Add in the visits up to the generated end-visit
 		// Subjects with just visit 0 are screening failures.
 		// Subjects with a final visit number < 14 are withdrawers.
-		for j := 0; j <= endvn; j++ {
-			for k := 0; k< len(testcodes); k++ {
-				baseline := genBaseline(testcodes[k], j)
-				fmt.Println(baseline)	
+		
+		for j := 0; j < len(testcodes); j++ {
+			baseline := genBaseline(testcodes[j])
+			fmt.Printf("Test code %s value %v\n", testcodes[j], baseline)	
+			vstestcd := testcodes[j]
+			vstest := testnames[j]
+			fmt.Printf("   Test code %s\n", vstestcd)
+			
+			for k := 0; k <= endvn; k++ {	
+				vsorres := getOrigRes(baseline, vstestcd, k, armcd)
 				vs = append(vs, &vsrec{
 					studyid: studyid,
 					domain:  domain,
 					usubjid: usubjid,
 					subjid: subjid,
 					siteid: siteid,
-					visitnum: j,
-					vstestcd: testcodes[k],
-					vstest: testnames[k]})
+					visitnum: k,
+					vstestcd: vstestcd,
+					vstest: vstest,
+					vsorres: vsorres,
+				})
+				
+				fmt.Printf("      Visit Number %v OrigResult %v\n", k, vsorres)
 				
 				
 				
 				
 				
-					//fmt.Println(*vs[i])
+// 				fmt.Println(*vs[i])
 			}
+			
 		}
 	}
 	
