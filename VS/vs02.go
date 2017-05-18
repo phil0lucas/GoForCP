@@ -91,7 +91,25 @@ func getOrigRes(baseline float64, vstestcd string, visitnum int, armcd int) floa
 			return baseline + randValue(5, -5)
 		}
 	} else {
-		return 200.00
+		if visitnum == 0 {
+			return baseline
+		} else if visitnum < 5 {
+			return baseline * 0.975 + randValue(2, -3)
+		} else if visitnum < 8 {
+			return baseline * 0.95 + randValue(1, -5)
+		} else if visitnum < 11 {
+			return baseline * 0.925 + randValue(0, -7)
+		} else {
+			return baseline * 0.9 + randValue(-3, -10)
+		}
+	}
+}
+
+func getUnits (testcode string) (string, string) {
+	if testcode == "HR" {
+		return "bpm", "bpm"
+	} else {
+		return "mmHg", "mmHg"
 	}
 }
 
@@ -135,7 +153,8 @@ func main() {
 			fmt.Printf("Test code %s value %v\n", testcodes[j], baseline)	
 			vstestcd := testcodes[j]
 			vstest := testnames[j]
-			fmt.Printf("   Test code %s\n", vstestcd)
+			vsorresu, vsstresu := getUnits(vstestcd)
+			//fmt.Printf("   Test code %s\n", vstestcd)
 			
 			for k := 0; k <= endvn; k++ {	
 				vsorres := getOrigRes(baseline, vstestcd, k, armcd)
@@ -149,15 +168,20 @@ func main() {
 					vstestcd: vstestcd,
 					vstest: vstest,
 					vsorres: vsorres,
+					vsstresn: vsorres,
+					vsstresc: strconv.FormatFloat(vsorres, 'f', 2, 64),
+					vsorresu: vsorresu,
+					vsstresu: vsstresu,
+					
 				})
 				
-				fmt.Printf("      Visit Number %v OrigResult %v\n", k, vsorres)
+				//fmt.Printf("      Visit Number %v Std Char Result %v\n", k, vsorres)
 				
 				
 				
 				
 				
-// 				fmt.Println(*vs[i])
+				fmt.Println(*vs[i])
 			}
 			
 		}
