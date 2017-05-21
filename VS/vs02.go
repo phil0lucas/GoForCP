@@ -30,7 +30,7 @@ import (
 	"flag"
 	"math/rand"
 	"strconv"
-//	"log"
+	"log"
 )
 
 // This will mirror the metadata above with more natural types
@@ -49,7 +49,7 @@ type vsrec struct {
 	vsstresc	string
 	vsstresn	float64
 	vsstresu	string
-	vsblfl		string
+	vsblfl		bool
 	vsdtc		time.Time
 	vsdy		int
 }
@@ -68,7 +68,6 @@ func randValue(max, min int) float64 {
 	rand.Seed(time.Now().UTC().UnixNano())
 	return float64(rand.Intn(max - min) + min)
 }
-
 
 func genBaseline(tcode string) float64 {
 	switch tcode {
@@ -139,6 +138,7 @@ func main() {
 		usubjid := strings.Split(str, ",")[3]
 		subjid := strings.Split(str, ",")[1]
 		siteid := strings.Split(str, ",")[2]
+		dmdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[5])
 		endv := strings.Split(str, ",")[6]
 		endvn, _ := strconv.Atoi(endv)
 		armcd, _ := strconv.Atoi(strings.Split(str, ",")[9])
@@ -148,6 +148,7 @@ func main() {
 		// Subjects with just visit 0 are screening failures.
 		// Subjects with a final visit number < 14 are withdrawers.
 		
+		// Test codes
 		for j := 0; j < len(testcodes); j++ {
 			baseline := genBaseline(testcodes[j])
 			fmt.Printf("Test code %s value %v\n", testcodes[j], baseline)	
@@ -155,9 +156,19 @@ func main() {
 			vstest := testnames[j]
 			vsorresu, vsstresu := getUnits(vstestcd)
 			//fmt.Printf("   Test code %s\n", vstestcd)
+			var vsblfl bool
 			
-			for k := 0; k <= endvn; k++ {	
+			// Visits
+			for k := 0; k <= endvn; k++ {
+				if k == 1 {
+					vsblfl = true
+				} else {
+					vsblfl = false
+				}
 				vsorres := getOrigRes(baseline, vstestcd, k, armcd)
+				vsdtc := dmdtc.AddDate(0, 0, (k*14))
+				vsdy := k * 14
+				
 				vs = append(vs, &vsrec{
 					studyid: studyid,
 					domain:  domain,
@@ -172,14 +183,10 @@ func main() {
 					vsstresc: strconv.FormatFloat(vsorres, 'f', 2, 64),
 					vsorresu: vsorresu,
 					vsstresu: vsstresu,
-					
+					vsblfl: vsblfl,
+					vsdtc: vsdtc,
+					vsdy: vsdy,
 				})
-				
-				//fmt.Printf("      Visit Number %v Std Char Result %v\n", k, vsorres)
-				
-				
-				
-				
 				
 				fmt.Println(*vs[i])
 			}
@@ -187,7 +194,6 @@ func main() {
 		}
 	}
 	
-	/*
 	fo, err := os.Create(*outfile)
 	if err != nil {
 		log.Fatal(err)
@@ -206,7 +212,15 @@ func main() {
 			vs[ii].usubjid + "," +
 			strconv.Itoa(vs[ii].visitnum) + "," +
 			vs[ii].vstestcd + "," +
-			vs[ii].vstest +
+			vs[ii].vstest + "," +
+			strconv.FormatFloat(vs[ii].vsorres, 'f', 1, 64) + "," +
+			strconv.FormatFloat(vs[ii].vsstresn, 'f', 1, 64) + "," +
+			vs[ii].vsstresc + "," +
+			vs[ii].vsorresu + "," +
+			vs[ii].vsstresu + "," +
+			strconv.FormatBool(vs[ii].vsblfl) + "," +
+			vs[ii].vsdtc.Format("2006-01-02") + "," +
+			strconv.Itoa(vs[ii].vsdy) +
 			"\n")
 
 		if err != nil {
@@ -217,5 +231,4 @@ func main() {
 
 	// Write to disk
 	w.Flush()	
-	*/
 }
