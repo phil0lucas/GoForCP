@@ -16,53 +16,46 @@
 // - VSSTRESN   Num     Standardized result in numeric form
 // - VSSTRESU   Char    Units of result in standardized form
 // - VSBLFL     Char    Flags baseline visit
-// - VSDTC      Date    Date of visit in ISO8601  
+// - VSDTC      Date    Date of visit in ISO8601
 // - VSDY    	Num     Study Day of collection
 
 package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
+	"log"
+	"math/rand"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
-	"flag"
-	"math/rand"
-	"strconv"
-//	"log"
-	"sort"
 )
 
 // This will mirror the metadata above with more natural types
 type vsrec struct {
-	studyid 	string
-	domain  	string
-	usubjid 	string
-	subjid  	string
-	siteid  	string
-	vsseq   	int
-	visitnum	int
-	vstestcd	string
-	vstest		string
-	vsorres		float64
-	vsorresu	string
-	vsstresc	string
-	vsstresn	float64
-	vsstresu	string
-	vsblfl		bool
-	vsdtc		time.Time
-	vsdy		int
+	studyid  string
+	domain   string
+	usubjid  string
+	subjid   string
+	siteid   string
+	vsseq    int
+	visitnum int
+	vstestcd string
+	vstest   string
+	vsorres  float64
+	vsorresu string
+	vsstresc string
+	vsstresn float64
+	vsstresu string
+	vsblfl   bool
+	vsdtc    time.Time
+	vsdy     int
 }
 
-// Sorting depends on an interface that demands 3 methods
-type lessFunc func(p1, p2 *vsrec) bool
-
-// multiSorter implements the Sort interface, sorting the changes within.
-type multiSorter struct {
-	vsrecs  []vsrec
-	less    []lessFunc
-}
+type vsrecs []vsrec
 
 // The program will be run with flags to specify the input & output files
 var infile = flag.String("i", "../SC/sc.csv", "Name of input file")
@@ -71,25 +64,23 @@ var testcodes = []string{"SBP", "DBP", "HR"}
 var testnames = []string{"Systolic Blood Pressure", "Diastolic Blood Pressure", "Heart Rate"}
 
 const (
-	domain 	= "VS"
+	domain = "VS"
 )
-
-
 
 func randValue(max, min int) float64 {
 	rand.Seed(time.Now().UTC().UnixNano())
-	return float64(rand.Intn(max - min) + min)
+	return float64(rand.Intn(max-min) + min)
 }
 
 func genBaseline(tcode string) float64 {
 	switch tcode {
-		// return rand.Intn(max - min) + min
-		case "HR":
-			return randValue(120, 70)
-		case "SBP":
-			return randValue(160, 120)
-		case "DBP":
-			return randValue(120, 90)
+	// return rand.Intn(max - min) + min
+	case "HR":
+		return randValue(120, 70)
+	case "SBP":
+		return randValue(160, 120)
+	case "DBP":
+		return randValue(120, 90)
 	}
 	return 0.0
 }
@@ -105,18 +96,18 @@ func getOrigRes(baseline float64, vstestcd string, visitnum int, armcd int) floa
 		if visitnum == 0 {
 			return baseline
 		} else if visitnum < 5 {
-			return baseline * 0.975 + randValue(2, -3)
+			return baseline*0.975 + randValue(2, -3)
 		} else if visitnum < 8 {
-			return baseline * 0.95 + randValue(1, -5)
+			return baseline*0.95 + randValue(1, -5)
 		} else if visitnum < 11 {
-			return baseline * 0.925 + randValue(0, -7)
+			return baseline*0.925 + randValue(0, -7)
 		} else {
-			return baseline * 0.9 + randValue(-3, -10)
+			return baseline*0.9 + randValue(-3, -10)
 		}
 	}
 }
 
-func getUnits (testcode string) (string, string) {
+func getUnits(testcode string) (string, string) {
 	if testcode == "HR" {
 		return "bpm", "bpm"
 	} else {
@@ -124,63 +115,34 @@ func getUnits (testcode string) (string, string) {
 	}
 }
 
-
-
-// Sort sorts the argument slice according to the less functions passed to OrderedBy.
-func (ms *multiSorter) Sort(vsrecs []vsrec) {
-	ms.vsrecs = vsrecs
-	sort.Sort(ms)
+func (t vsrecs) Len() int {
+	return len(t)
 }
 
-// OrderedBy returns a Sorter that sorts using the less functions, in order.
-// Call its Sort method to sort the data.
-func OrderedBy(less ...lessFunc) *multiSorter {
-	return &multiSorter{
-		less: less,
+func (t vsrecs) Swap(i, j int) {
+	t[i], t[j] = t[j], t[i]
+}
+
+func (t vsrecs) Less(i, j int) bool {
+	if t[i].usubjid < t[j].usubjid {
+		return true
 	}
-}
-
-// Len is part of sort.Interface.
-func (ms *multiSorter) Len() int {
-	return len(ms.vsrecs)
-}
-
-// Swap is part of sort.Interface.
-func (ms *multiSorter) Swap(i, j int) {
-	ms.vsrecs[i], ms.vsrecs[j] = ms.vsrecs[j], ms.vsrecs[i]
-}
-
-// Less is part of sort.Interface. It is implemented by looping along the
-// less functions until it finds a comparison that is either Less or
-// !Less. Note that it can call the less functions twice per call. 
-func (ms *multiSorter) Less(i, j int) bool {
-	p, q := &ms.vsrecs[i], &ms.vsrecs[j]
-	// Try all but the last comparison.
-	var k int
-	for k = 0; k < len(ms.less)-1; k++ {
-		less := ms.less[k]
-		switch {
-		case less(p, q):
-			// p < q, so we have a decision.
-			return true
-		case less(q, p):
-			// p > q, so we have a decision.
-			return false
-		}
-		// p == q; try the next comparison.
+	if t[i].usubjid > t[j].usubjid {
+		return false
 	}
-	// All comparisons to here said "equal", so just return whatever
-	// the final comparison reports.
-	return ms.less[k](p, q)
+	// If USUBJIDs are equal
+	if t[i].vstestcd < t[j].vstestcd {
+		return true
+	}
+	if t[i].vstestcd > t[j].vstestcd {
+		return false
+	}
+	return t[i].visitnum < t[j].visitnum
 }
-
-
-
-
 
 func main() {
 	flag.Parse()
-	
+
 	// open the file and pass it to a Scanner object
 	file, err := os.Open(*infile)
 	if err != nil {
@@ -189,7 +151,7 @@ func main() {
 	defer file.Close()
 
 	// Output slice of pointers to structs
-	var vs []*vsrec
+	var vs vsrecs
 
 	// Pass the opened file to a scanner
 	scanner := bufio.NewScanner(file)
@@ -208,22 +170,22 @@ func main() {
 		endv := strings.Split(str, ",")[6]
 		endvn, _ := strconv.Atoi(endv)
 		armcd, _ := strconv.Atoi(strings.Split(str, ",")[9])
-		fmt.Printf("Subject %s\n", usubjid)
-		
+		//fmt.Printf("Subject %s\n", usubjid)
+
 		// Add in the visits up to the generated end-visit
 		// Subjects with just visit 0 are screening failures.
 		// Subjects with a final visit number < 14 are withdrawers.
-		
+
 		// Test codes
 		for j := 0; j < len(testcodes); j++ {
 			baseline := genBaseline(testcodes[j])
-			fmt.Printf("Test code %s value %v\n", testcodes[j], baseline)	
+			//fmt.Printf("Test code %s value %v\n", testcodes[j], baseline)
 			vstestcd := testcodes[j]
 			vstest := testnames[j]
 			vsorresu, vsstresu := getUnits(vstestcd)
 			//fmt.Printf("   Test code %s\n", vstestcd)
 			var vsblfl bool
-			
+
 			// Visits
 			for k := 0; k <= endvn; k++ {
 				if k == 1 {
@@ -232,86 +194,66 @@ func main() {
 					vsblfl = false
 				}
 				vsorres := getOrigRes(baseline, vstestcd, k, armcd)
-				vsdtc := dmdtc.AddDate(0, 0, (k*14))
+				vsdtc := dmdtc.AddDate(0, 0, (k * 14))
 				vsdy := k * 14
-				
-				vs = append(vs, &vsrec{
-					studyid: studyid,
-					domain:  domain,
-					usubjid: usubjid,
-					subjid: subjid,
-					siteid: siteid,
+
+				vs = append(vs, vsrec{
+					studyid:  studyid,
+					domain:   domain,
+					usubjid:  usubjid,
+					subjid:   subjid,
+					siteid:   siteid,
 					visitnum: k,
 					vstestcd: vstestcd,
-					vstest: vstest,
-					vsorres: vsorres,
+					vstest:   vstest,
+					vsorres:  vsorres,
 					vsstresn: vsorres,
 					vsstresc: strconv.FormatFloat(vsorres, 'f', 2, 64),
 					vsorresu: vsorresu,
 					vsstresu: vsstresu,
-					vsblfl: vsblfl,
-					vsdtc: vsdtc,
-					vsdy: vsdy,
+					vsblfl:   vsblfl,
+					vsdtc:    vsdtc,
+					vsdy:     vsdy,
 				})
-				
-				fmt.Println(*vs[i])
+
+				//fmt.Println(vs[i])
 			}
-			
+
 		}
 	}
-	
-	// Sort the struct of VS 'records'
-	// Closures that order the Change structure.
-	kusubjid := func(c1, c2 vsrec) bool {
-		return c1.usubjid < c2.usubjid
-	}
-	kvisitnum := func(c1, c2 vsrec) bool {
-		return c1.visitnum < c2.visitnum
-	}
-	ktestcd := func(c1, c2 vsrec) bool {
-		return c1.vstestcd < c2.vstestcd
-	}
 
-	OrderedBy(kusubjid, kvisitnum, ktestcd).Sort(vs)
-	fmt.Println(vs)
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	/*
+	// Sort the struct of VS 'records'
+	sort.Sort(vsrecs(vs))
+	// fmt.Println(vs)
+
 	fo, err := os.Create(*outfile)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer fo.Close()
-	
+
 	// Create a buffered writer from the file
 	w := bufio.NewWriter(fo)
-	
-	for ii, _ := range vs{
+
+	for ii, _ := range vs {
 		bytesWritten, err := w.WriteString(
 			vs[ii].studyid + "," +
-			vs[ii].domain + "," +
-			vs[ii].subjid + "," +
-			vs[ii].siteid + "," +
-			vs[ii].usubjid + "," +
-			strconv.Itoa(vs[ii].visitnum) + "," +
-			vs[ii].vstestcd + "," +
-			vs[ii].vstest + "," +
-			strconv.FormatFloat(vs[ii].vsorres, 'f', 1, 64) + "," +
-			strconv.FormatFloat(vs[ii].vsstresn, 'f', 1, 64) + "," +
-			vs[ii].vsstresc + "," +
-			vs[ii].vsorresu + "," +
-			vs[ii].vsstresu + "," +
-			strconv.FormatBool(vs[ii].vsblfl) + "," +
-			vs[ii].vsdtc.Format("2006-01-02") + "," +
-			strconv.Itoa(vs[ii].vsdy) +
-			"\n")
+				vs[ii].domain + "," +
+				vs[ii].subjid + "," +
+				vs[ii].siteid + "," +
+				vs[ii].usubjid + "," +
+				strconv.Itoa(vs[ii].visitnum) + "," +
+				vs[ii].vstestcd + "," +
+				vs[ii].vstest + "," +
+				strconv.FormatFloat(vs[ii].vsorres, 'f', 1, 64) + "," +
+				strconv.FormatFloat(vs[ii].vsstresn, 'f', 1, 64) + "," +
+				vs[ii].vsstresc + "," +
+				vs[ii].vsorresu + "," +
+				vs[ii].vsstresu + "," +
+				strconv.FormatBool(vs[ii].vsblfl) + "," +
+				vs[ii].vsdtc.Format("2006-01-02") + "," +
+				strconv.Itoa(vs[ii].vsdy) +
+				"\n")
 
 		if err != nil {
 			log.Fatal(err)
@@ -321,5 +263,4 @@ func main() {
 
 	// Write to disk
 	w.Flush()
-	*/
 }
