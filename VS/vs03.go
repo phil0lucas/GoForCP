@@ -59,7 +59,7 @@ type vsrecs []vsrec
 
 // The program will be run with flags to specify the input & output files
 var infile = flag.String("i", "../SC/sc.csv", "Name of input file")
-var outfile = flag.String("o", "vs2.csv", "Name of output file")
+var outfile = flag.String("o", "vs3.csv", "Name of output file")
 var testcodes = []string{"SBP", "DBP", "HR"}
 var testnames = []string{"Systolic Blood Pressure", "Diastolic Blood Pressure", "Heart Rate"}
 
@@ -226,6 +226,21 @@ func main() {
 	sort.Sort(vsrecs(vs))
 	// fmt.Println(vs)
 
+	// Define VSSEQ as key as running int within each subject
+	// Need to define a variable external to the loop otherwise
+	// scope will make each value 1
+	var count int
+	for ii := 0; ii < len(vs); ii++ {
+		if ii == 0 || ((vs[ii].usubjid != vs[ii-1].usubjid)) {
+			count = 0
+		}
+		count++
+		vs[ii].vsseq = count
+	}
+	//fmt.Println(vs)
+	
+	
+	// Write to external file.
 	fo, err := os.Create(*outfile)
 	if err != nil {
 		log.Fatal(err)
@@ -242,6 +257,7 @@ func main() {
 				vs[ii].subjid + "," +
 				vs[ii].siteid + "," +
 				vs[ii].usubjid + "," +
+				strconv.Itoa(vs[ii].vsseq) + "," +
 				strconv.Itoa(vs[ii].visitnum) + "," +
 				vs[ii].vstestcd + "," +
 				vs[ii].vstest + "," +
@@ -258,9 +274,10 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("Bytes written: %d\n", bytesWritten)
+		//log.Printf("Bytes written: %d\n", bytesWritten)
 	}
 
 	// Write to disk
 	w.Flush()
+	
 }
