@@ -10,6 +10,7 @@ import (
 	"strings"
 	"os"
 	"strconv"
+	"reflect"
 )
 
 type dmrec struct {
@@ -69,7 +70,8 @@ func readFile(infile *string) dmrecs {
 
 func countd(d dmrecs, element string, by string) map[string]int {
 	for ii, _ := range d {
-		fmt.Println(d[ii].armcd)
+		element := reflect.ValueOf(by)
+		fmt.Println(element)
 	}
 	var m map[string]int
 	return m
