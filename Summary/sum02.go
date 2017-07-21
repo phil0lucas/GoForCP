@@ -10,7 +10,7 @@ import (
 	"strings"
 	"os"
 	"strconv"
-	"reflect"
+//	"reflect"
 )
 
 type dmrec struct {
@@ -20,6 +20,10 @@ type dmrec struct {
 	race	string
 	armcd	int
 	arm		string
+}
+
+type Key struct {
+	arm, sex	string
 }
 
 // Slice of pointers to structs - 
@@ -68,21 +72,24 @@ func readFile(infile *string) dmrecs {
 }
 
 
-func countd(d dmrecs, element string, by string) map[string]int {
-	for ii, _ := range d {
-		element := reflect.ValueOf(by)
-		fmt.Println(element)
+//func countd(dm dmrecs), element string, by string) map[string]int {
+func countd(dm dmrecs) map[Key]int {
+	m := make(map[Key]int)
+	for _, v := range dm {
+		m[Key{v.arm, v.sex}]++
+		m[Key{"All",v.sex}]++
 	}
-	var m map[string]int
 	return m
 }
+
 
 func main() {
 	var dm dmrecs
 	// fmt.Printf("Type of infile object %T\n", infile)
 	dm = readFile(infile)
 	// fmt.Println(*dm[99] )
-	m := countd(dm, "usubjid", "arm")
+	// fmt.Printf("Type of dm object %T\n", dm)
+	m := countd(dm)
 	fmt.Println(m )
 }
 
