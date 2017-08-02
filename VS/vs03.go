@@ -221,6 +221,19 @@ func main() {
 
 		}
 	}
+	
+	rand.Seed(time.Now().UTC().UnixNano())
+	for ii, _ := range vs{
+        randno := rand.Intn(100)
+        if randno < 5 {
+            vs[ii].vsorres = -0.0
+            vs[ii].vsstresn = -0.0
+            vs[ii].vsstresc = "-0.0"
+        }
+    }
+	
+	
+	
 
 	// Sort the struct of VS 'records'
 	sort.Sort(vsrecs(vs))
@@ -274,7 +287,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		//log.Printf("Bytes written: %d\n", bytesWritten)
+		log.Printf("Bytes written: %d\n", bytesWritten)
 	}
 
 	// Write to disk

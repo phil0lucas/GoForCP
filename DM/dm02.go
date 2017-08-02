@@ -21,9 +21,23 @@
 // - ARM     Char 7  Treatment Arm
 // - DMDY    Num     Study Day of collection
 
+
+// Need to change this to set a small random percentage of values to 'missing'.
+// Missing will need to be a specific value per type e.g. -999 for an age.
+// Perhaps this also implies a type of 'Age' which implements a method such
+// as 'setMissing'.
+// If multiple variables of different types need to be set in this way, 
+// then can define an interface as a way of collecting the types which can be 
+// set in this way.
+
+
+
+
+
 package main
 
 import (
+    //"linux_amd64/github.com/phil0lucas/GoForCP/InjectMV"
 	"bufio"
 	"fmt"
 	"os"
@@ -180,9 +194,33 @@ func main() {
 			armcd: armcd,
 			arm: arm,
 			dmdy: dmdy})
-			fmt.Println(*dm[i])
+			//fmt.Println(*dm[i])
 	}
 	
+	// Injection of some 'missing values' into:
+	// age (int)
+	// race (string)
+	// brthdtc (time.Time)
+	// For each type a substitute value is chosen dependent upon
+	// the type and range of values it may contain. (Is this the best / only way??)
+	
+	rand.Seed(time.Now().UTC().UnixNano())
+	for ii, _ := range dm{
+        randno := rand.Intn(100)
+        //fmt.Println(randno)
+        if randno < 3 {
+            dm[ii].age = -999
+            // dm[ii].brthdtc = How to set date literal ??
+        }
+        randnoc := rand.Intn(100)
+        //fmt.Println(randno)
+        if randnoc < 3 {
+            dm[ii].race = "" 
+        }
+    }
+	
+	
+	// Output file writing section
 	fo, err := os.Create(*outfile)
 	if err != nil {
 		log.Fatal(err)
@@ -222,5 +260,6 @@ func main() {
 	}
 
 	// Write to disk
-	w.Flush()		
+	w.Flush()
+	
 }
