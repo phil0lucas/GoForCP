@@ -10,7 +10,6 @@ import (
 	"strings"
 	"os"
 	"strconv"
-//	"reflect"
 )
 
 type dmrec struct {
@@ -29,6 +28,11 @@ type bigN struct {
 // Slice of pointers to structs - 
 //	one element per input record
 type dmrecs []*dmrec
+
+// Interface to collect counting of non-missing values
+type NMiss interface {
+    NonMiss
+}
 
 // The program will be run with flags to specify the input & output files
 var infile = flag.String("i", "../DM/dm.csv", "Name of input file")
@@ -100,11 +104,14 @@ func main() {
 	// Read the file and dump into the slice of structs
 	dm = readFile(infile)
     // Determine the numbers of subjects by TG including an 'All' level
+    
+    /*
 	m := countd(dm)
     fmt.Println(m)
     // Determine number of non-missing values of Age per TG
     n := nmiss(dm)
 	fmt.Println(n)
+	*/
 }
 
 

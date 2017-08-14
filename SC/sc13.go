@@ -28,15 +28,16 @@
 package main
 
 import (
-	"bufio"
+//	"bufio"
 	"flag"
-	"log"
+//	"log"
 	"math/rand"
-	"os"
+//	"os"
 	"strconv"
 	"strings"
 	"time"
-	"sort"
+//	"sort"
+    "fmt"
 )
 
 type RefStartDate   *time.Time
@@ -51,9 +52,9 @@ type Subject struct {
 	dmdtc   time.Time
 	endv    int
 	rfstdtc RefStartDate
-	rfendtc RefEndDate
-	armcd	int
-	arm		string	
+	//rfendtc RefEndDate
+	//armcd	int
+	//arm		string	
 }
 
 // Constants can only be numbers, strings or boolean
@@ -127,12 +128,13 @@ func endv(r int) int {
 
 // For screen failures, the ref start and end dates should really be missing
 // Let's substitute the screening date
-func startDate(r int, d time.Time) time.Time {
+func startDate(r int, d time.Time) RefStartDate {
 	switch r {
 	case 0:
-		return d
+		return nil
 	default:
-		return d.AddDate(0, 0, 14)
+        d2 := d.AddDate(0, 0, 14)
+		return &d2
 	}
 }
 
@@ -170,9 +172,9 @@ func main() {
 		usubjid := strings.Join(usubjsl, "-")
 		rectype := ptype()
 		dmdtc := baseDate.AddDate(0, 0, rand.Intn(364))
-        /*
+        endv := endv(rectype)
 		rfstdtc := startDate(rectype, dmdtc)
-		endv := endv(rectype)
+		/*
 		rfendtc := endDate(rectype, endv, dmdtc)
 		armcd, arm := getArm()
 		*/
@@ -184,15 +186,19 @@ func main() {
 			usubjid,
 			rectype,
 			dmdtc,
-            /*
-			endv,
+            endv,
 			rfstdtc,
+            /*
 			rfendtc,
 			armcd,
 			arm,
             */
 		}
+		fmt.Println(*sSubj[ii])
+        fmt.Println((*sSubj[ii]).dmdtc.Format("2006-01-02"))
+        fmt.Println((*sSubj[ii]).rfstdtc)
 	}
+	
 	
 	// Before writing to the output file (as strings)
 	// the structs need to be sorted to ensure 
