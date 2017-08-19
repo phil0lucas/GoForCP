@@ -28,11 +28,11 @@
 package main
 
 import (
-//	"bufio"
+	"bufio"
 	"flag"
-//	"log"
+	"log"
 	"math/rand"
-//	"os"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -60,15 +60,10 @@ type Subject struct {
 	rectype int
 	dmdtc   time.Time
 	endv    int
-	rfstdtc RefStartDate
-	rfendtc RefEndDate
-	armcd	ArmCD
-	arm		Arm
-}
-
-// NB This defines Methods acting on types, not functions
-type DateFmt interface {
-    dateFmt() string
+	rfstdtc *RefStartDate
+	rfendtc *RefEndDate
+	armcd	*ArmCD
+	arm		*Arm
 }
 
 // Constants can only be numbers, strings or boolean
@@ -89,20 +84,6 @@ var outfile = flag.String("o", "sc.csv", "Name of output file")
 
 // To allow a random choice of arm
 var arm = map[int]string{0:"Placebo", 1:"Active"}
-
-/*
-func (s *RefStartDate) dateFmt() string {
-    var d time.Time
-    d = *s
-    return d.Format("2006-01-02")
-}
-
-func (s *RefEndDate) dateFmt() string {
-    var d time.Time
-    d = *s
-    return d.Format("2006-01-02")
-}
-*/
 
 // This pads the string in the 1st arg to the length
 // in the 3rd arg with the char in the 2nd arg
@@ -157,14 +138,25 @@ func endv(r int) int {
 // For screen failures, the ref start and end dates should really be missing.
 // Hence pointer type used.
 func startDate(r int, d time.Time) *RefStartDate {
-    var d2 RefStartDate
 	switch r {
 	case 0:
 		return nil
 	default:
-        d2 := d.AddDate(0, 0, 14)
+        d2 := RefStartDate(d.AddDate(0, 0, 14))
 		return &d2
 	}
+}
+
+func (s *RefStartDate) dateFmt() string {
+    // The receiver s is a pointer to a RefStartDate
+    // If the value of the pointer is not nil then
+    // it points to a variable
+    if s != nil {
+        d := time.Time(*s)
+        return d.Format("2006-01-02")
+    } else {
+        return ""
+    }
 }
 
 // Construct an end date dependent upon the last visit
@@ -173,12 +165,24 @@ func endDate(r int, e int, d time.Time) *RefEndDate {
 	case 0:
 		return nil
 	case 1:
-        d2 := d.AddDate(0, 0, (e * 14))
+        d2 := RefEndDate(d.AddDate(0, 0, (e * 14)))
 		return &d2
 	default:
-        d2 := d.AddDate(0, 0, (lastVisit * 14))
+        d2 := RefEndDate(d.AddDate(0, 0, (lastVisit * 14)))
 		return &d2
 	}
+}
+
+func (s *RefEndDate) dateFmt() string {
+    // The receiver s is a pointer to a RefEndDate
+    // If the value of the pointer is not nil then
+    // it points to a variable
+    if s != nil {
+        d := time.Time(*s)
+        return d.Format("2006-01-02")
+    } else {
+        return ""
+    }
 }
 
 func getArm(r int) (*ArmCD, *Arm) {
@@ -186,10 +190,29 @@ func getArm(r int) (*ArmCD, *Arm) {
     if r != 0 {
         armcd := rand.Intn(len(arm))
         arm := arm[armcd]
-        return &armcd, &arm
+        armcdx := ArmCD(armcd)
+        armx := Arm(arm)
+        return &armcdx, &armx
     } else {
         return nil, nil
     }
+}
+
+func (a *ArmCD) armCDFmt() string {
+	if a != nil {
+		i := int(*a)
+		return strconv.Itoa(i)
+	} else {
+		return ""
+	}
+}
+
+func (a *Arm) armFmt() string {
+	if a != nil {
+		return string(*a)
+	} else {
+		return ""
+	}
 }
 
 func main() {
@@ -197,7 +220,7 @@ func main() {
 	flag.Parse()
 
 	// Create slice of pointers to Subject types
-	sSubj := make([]*Subject, nSubj)
+    sSubj := make([]*Subject, nSubj)
 
 	for ii := 0; ii < nSubj; ii++ {
 
@@ -209,8 +232,9 @@ func main() {
 		dmdtc := baseDate.AddDate(0, 0, rand.Intn(364))
         endv := endv(rectype)
 		rfstdtc := startDate(rectype, dmdtc)
-		
+// 		fmt.Println(rfstdtc.dateFmt())
 		rfendtc := endDate(rectype, endv, dmdtc)
+// 		fmt.Println(rfendtc.dateFmt())
 		armcd, arm := getArm(rectype)
 
 		sSubj[ii] = &Subject{
@@ -226,50 +250,13 @@ func main() {
 			armcd,
 			arm,
 		}
-		
-		/*
-		fmt.Println(*sSubj[ii])
-        fmt.Println(((*sSubj[ii]).dmdtc).Format("2006-01-02"))
-        // Automatic pointer derefencing
-        if sSubj[ii].rfstdtc != nil {
-            fmt.Println(sSubj[ii].rfstdtc)
-        } else {
-            fmt.Println("Missing StartDate for SF!!")
-        }
-        
-        if sSubj[ii].rfendtc != nil {
-            fmt.Println(sSubj[ii].rfendtc)
-        } else {
-            fmt.Println("Missing EndDate for SF!!")
-        } 
-        
-        if sSubj[ii].arm != nil {
-            fmt.Println(sSubj[ii].arm)
-        } else {
-            fmt.Println("Missing arm text for SF!!")
-        }          
-        
-        if sSubj[ii].armcd != nil {
-            fmt.Println(sSubj[ii].armcd)
-        } else {
-            fmt.Println("Missing arm code for SF!!")
-        }   
-        */
+//         fmt.Println(*sSubj[ii])
 	}
-	
-	
-	// Before writing to the output file (as strings)
-	// the structs need to be sorted to ensure 
-	// USUBJID order
-	
-	
-
 	// Output to external file via strings
 	// Could substitute rectype=0 ref dates with missing strings
 	// but what would happen when the data is read into a
 	// struct for further processing??
 	
-	/*
 	fo, err := os.Create(*outfile)
 	if err != nil {
 		log.Fatal(err)
@@ -280,14 +267,6 @@ func main() {
 	w := bufio.NewWriter(fo)
 
 	for ii := 0; ii < nSubj; ii++ {
-        var refstart, refend string
-        
-        if sSubj[ii].rfstdtc != nil {
-            refstart = (sSubj[ii].rfstdtc).dataFmt
-        } else {
-            refstart = ""
-        }
-        
 		bytesWritten, err := w.WriteString(
 			sSubj[ii].studyid + "," +
 				sSubj[ii].subjid + "," +
@@ -296,10 +275,10 @@ func main() {
 				strconv.Itoa(sSubj[ii].rectype) + "," +
 				sSubj[ii].dmdtc.Format("2006-01-02") + "," +
 				strconv.Itoa(sSubj[ii].endv) + "," +
-				refstart + "," +
-				//sSubj[ii].rfendtc.Format("2006-01-02") + "," +
-				//strconv.Itoa(sSubj[ii].armcd) + "," +
-				//sSubj[ii].arm +
+				sSubj[ii].rfstdtc.dateFmt() + "," +
+				sSubj[ii].rfendtc.dateFmt() + "," +
+				sSubj[ii].armcd.armCDFmt() + "," +
+				sSubj[ii].arm.armFmt() +
 				"\n")
 
 		if err != nil {
@@ -307,8 +286,6 @@ func main() {
 		}
 		log.Printf("Bytes written: %d\n", bytesWritten)
 	}
-
 	// Write to disk
 	w.Flush()
-	*/
 }
