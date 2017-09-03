@@ -1,51 +1,44 @@
+// Calculate median for slice of ints
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
-type number interface{
-	IsOdd () bool
-	Median () float64
-}
-
-type BP []float64
 type Age []int
 
-var f = BP{1.2, 3.4, 8.9}
-var f2 = BP{1.2, 3.4, 8.9, 11.3}
-var i = Age{1, 3, 8}
+var i = Age{0,3,8,11,12,56,34}
 var i2 = Age{0, 3, 8, 11}
 
-func (i Age) IsOdd() bool {
-	if len(i) % 2 == 0 {
-		return false
-	} else {
-		return true
-	}
-}
-
-func (f BP) IsOdd() bool {
-	if len(f) % 2 == 0 {
-		return false
-	} else {
-		return true
-	}
-}
-
 func (i Age) Median() float64 {
-	if i.IsOdd() {
-		pos := (len(i) / 2) - 1
-		return float64(i[pos])
+	if l := len(i); l > 0 {
+		if l % 2 == 0 {
+			fmt.Println("Even")
+			lowerBound := (l/2) - 1
+			upperBound := l/2
+			fmt.Println("lower index value", i[lowerBound])
+			fmt.Println("upper index value", i[upperBound])
+			fmt.Printf("%T\n", i[lowerBound])
+			mid := float64((int(i[lowerBound]) + int(i[upperBound])) / 2)
+			fmt.Printf("%f", mid)
+			//for pp := range midTwo{
+			//	fmt.Println(pp)
+			//}
+			return 0.0
+		} else {
+			fmt.Println("Odd")
+			mid := int(math.Floor(float64(l / 2)))
+			return float64(i[mid])
+		}
+	// Empty slice
 	} else {
-		return 1.0
+		return math.NaN() // ???
 	}
 }
+
 
 func main() {
-	fmt.Println(f)
-	fmt.Println(f.IsOdd())
-	fmt.Println(f2.IsOdd())
-	fmt.Println(i.IsOdd())
-	fmt.Println(i2.IsOdd())
-	
-	fmt.Println(i.Median())
+	//fmt.Println(i.Median())
+	fmt.Println(i2.Median())
 }
