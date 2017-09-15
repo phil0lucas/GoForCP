@@ -1,17 +1,17 @@
 // 
 
-package main
+package ReportSummary
 
 import (
 	"github.com/jung-kurt/gofpdf"
 	"fmt"
 )
 
-func main() {
-	pdf := gofpdf.New("P", "mm", "A4", "")
+func writeTitle(outputFile string, title1 string) {
+	pdf := gofpdf.New("L", "mm", "A4", "")
 	pdf.AddPage()
-	pdf.SetFont("Arial", "B", 16)
-	pdf.Cell(40, 10, "Hello, world")
-	err := pdf.OutputFileAndClose("hello.pdf")
+	pdf.SetFont("Courier", "", 12)
+	pdf.Cell(10, 10, title1)
+	err := pdf.OutputFileAndClose(outputFile)
 	fmt.Println(err)
 }

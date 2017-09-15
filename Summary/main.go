@@ -4,6 +4,7 @@ package main
 
 import (
 //	"github.com/jung-kurt/gofpdf"
+	"github.com/phil0lucas/GoForCP/Summary"
 	"fmt"
 	"bufio"
 	"flag"
@@ -21,20 +22,6 @@ type dmrec struct {
 	arm		string
 }
 
-type bigN struct {
-	arm	string
-}
-
-// Slice of pointers to structs - 
-//	one element per input record
-type dmrecs []*dmrec
-
-// Interface to collect counting of non-missing values
-type NMiss interface {
-    NonMiss
-}
-
-// The program will be run with flags to specify the input & output files
 var infile = flag.String("i", "../DM/dm.csv", "Name of input file")
 //var outfile = flag.String("o", "summary.pdf", "Name of output file")
 
