@@ -43,7 +43,7 @@ import (
 // In the case of an MV the value of the pointer address is Nil.
 // BUT: Named types (eg RefStartDate) and pointers to them (*RefStartDate)
 // are the only types that can appear in a receiver declaration.
-// Method declarations are not permitted on named types that are themselves
+// Method declarations are NOT permitted on named types that are themselves
 // pointers. So:
 // type P *int
 // func (P) f() {  /* compile error. Invalid receiver type */ }

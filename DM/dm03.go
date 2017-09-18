@@ -45,6 +45,11 @@ import (
 	"log"
 )
 
+type birthdate time.Time
+type age int
+type sex string
+type race string
+
 // This will mirror the metadata above with more natural types
 type dmrec struct {
 	studyid string
@@ -59,10 +64,10 @@ type dmrec struct {
 	invname string
 	country string
 	ageu	string
-	age		int
-	brthdtc time.Time
-	sex		string
-	race	string
+	age		*age
+	brthdtc *birthdate
+	sex		*sex
+	race	*race
 	armcd	int
 	arm		string
 	dmdy    int
@@ -76,8 +81,8 @@ var outfile = flag.String("o", "dm.csv", "Name of output file")
 var invid = map[int]string{0:"AAA", 1:"BBB", 2:"CCC", 3:"DDD", 4:"EEE"}
 var invnm = map[int]string{0:"Smith", 1:"Jones", 2:"Robinson", 3:"Brown", 4:"Green"}
 var country = map[int]string{0:"GBR", 1:"USA", 2:"FRA", 3:"GER", 4:"SWE"}
-var sex = map[int]string{0:"M", 1:"F"}
-var race = map[int]string{0:"White", 1:"Black", 2:"Asian"}
+var sexmp = map[int]string{0:"M", 1:"F"}
+var racemp = map[int]string{0:"White", 1:"Black", 2:"Asian"}
 var arm = map[int]string{0:"Placebo", 1:"Active"}
 
 const (
@@ -100,35 +105,102 @@ func getCty() string{
 	return country[key]
 }
 
-// min age = 20, max age = 80
-func getAge() int {
+func flagMiss () bool {
 	rand.Seed(time.Now().UTC().UnixNano())
-	return rand.Intn(59) + 20
+	if rand.Float64() >= 0.05 {
+		return false
+	} else {
+		return true
+	}
+}
+
+// min age = 20, max age = 80
+func getAge() *age {
+	if flagMiss() == false {
+		rand.Seed(time.Now().UTC().UnixNano())
+		r := age(rand.Intn(59) + 20)
+		return &r
+	} else {
+		return nil
+	}
 }
 
 // Randomly assign a gender to the subject
-func getSex() string {
-	rand.Seed(time.Now().UTC().UnixNano())
-	return sex[rand.Intn(len(sex))]
+func getSex() *sex {
+	if flagMiss() == false {
+		rand.Seed(time.Now().UTC().UnixNano())
+		s := sex(sexmp[rand.Intn(len(sexmp))])
+		return &s
+	} else {
+		return nil
+	}
 }
 
 // Randomly assign a race to the subject
-func getRace() string {
-	rand.Seed(time.Now().UTC().UnixNano())
-	return race[rand.Intn(len(race))]	
+func getRace() *race {
+	if flagMiss() == false {	
+		rand.Seed(time.Now().UTC().UnixNano())
+		r := race(racemp[rand.Intn(len(racemp))])
+		return &r
+	} else {
+		return nil
+	}
 }
 
 // Generate a birth date based on the recorded age
-func getBday(dmdtc time.Time, age int) time.Time {
+func getBday(dmdtc time.Time, age *age) *birthdate {
 	// Birth date is recorded at screening, which is DMDTC here.
 	// Having randomly generated an age, calculate the last possible 
 	// birthday at that age and then subtract a random number
 	// of days between 0 and 364
-	_bdate := dmdtc.AddDate(-age, 0, 0)
-	rand.Seed(time.Now().UTC().UnixNano())
-	offset := rand.Intn(364)
-	return _bdate.AddDate(0,0,-offset)
+	if age != nil {
+		v := int(*age)
+		_bdate := dmdtc.AddDate(-v, 0, 0)
+		rand.Seed(time.Now().UTC().UnixNano())
+		offset := rand.Intn(364)
+		b := birthdate(_bdate.AddDate(0,0,-offset))
+		return &b
+	} else {
+		return nil
+	}
 }
+
+func (s *birthdate) dateFmt() string {
+    // The receiver s is a pointer to a RefEndDate
+    // If the value of the pointer is not nil then
+    // it points to a variable
+    if s != nil {
+        d := time.Time(*s)
+        return d.Format("2006-01-02")
+    } else {
+        return ""
+    }
+}
+
+func ageToString(a *age) string {
+	if a != nil {
+		return strconv.Itoa(int(*a))
+	} else {
+		return ""
+	}
+}
+
+func sexToString(a *sex) string {
+	if a != nil {
+		return string(*a)
+	} else {
+		return ""
+	}
+}
+
+func raceToString(a *race) string {
+	if a != nil {
+		return string(*a)
+	} else {
+		return ""
+	}
+}
+
 
 func main() {
 	flag.Parse()
@@ -165,14 +237,9 @@ func main() {
 		invid, invname := getInv()
 		country := getCty()
 		age := getAge()
-		race := getRace()
-		
-		//_bdate := dmdtc.AddDate(-age, 0, 0).Format("2006-01-02")
-		//_dmdtc := dmdtc.Format("2006-01-02")
-		//_age := strconv.Itoa(age)
-		//fmt.Println("Last possible birthdate: " + _bdate + "Age " + _age + " at " + _dmdtc)
 		brthdtc := getBday(dmdtc, age)
 		sex := getSex()
+		race := getRace()
 		armcd, _ := strconv.Atoi(strings.Split(str, ",")[9])
 		arm := strings.Split(str, ",")[10]
 		
@@ -196,7 +263,7 @@ func main() {
 			armcd: armcd,
 			arm: arm,
 			dmdy: dmdy})
-			//fmt.Println(*dm[i])
+// 			fmt.Println(*dm[i])
 	}
 	
 	// Injection of some 'missing values' into:
@@ -206,23 +273,23 @@ func main() {
 	// For each type a substitute value is chosen dependent upon
 	// the type and range of values it may contain. (Is this the best / only way??)
 	
-	rand.Seed(time.Now().UTC().UnixNano())
-	for ii, _ := range dm{
-        randno := rand.Intn(100)
-        //fmt.Println(randno)
-        if randno < 3 {
-            dm[ii].age = -999
-            // dm[ii].brthdtc = How to set date literal ??
-        }
-        randnoc := rand.Intn(100)
-        //fmt.Println(randno)
-        if randnoc < 3 {
-            dm[ii].race = "" 
-        }
-    }
+// 	rand.Seed(time.Now().UTC().UnixNano())
+// 	for ii, _ := range dm{
+//         randno := rand.Intn(100)
+//         //fmt.Println(randno)
+//         if randno < 3 {
+//             dm[ii].age = -999
+//             // dm[ii].brthdtc = How to set date literal ??
+//         }
+//         randnoc := rand.Intn(100)
+//         //fmt.Println(randno)
+//         if randnoc < 3 {
+//             dm[ii].race = "" 
+//         }
+//     }
 	
 	
-	// Output file writing section
+// 	// Output file writing section
 	fo, err := os.Create(*outfile)
 	if err != nil {
 		log.Fatal(err)
@@ -245,11 +312,11 @@ func main() {
 			dm[ii].invid +  "," + 
 			dm[ii].invname +  "," +
 			dm[ii].country +  "," +
-			strconv.Itoa(dm[ii].age) +  "," + 
+			ageToString(dm[ii].age) +  "," + 
 			dm[ii].ageu +  "," + 
-			dm[ii].brthdtc.Format("2006-01-02") + "," +
-			dm[ii].sex +  "," +
-			dm[ii].race +  "," +
+			dm[ii].brthdtc.dateFmt() + "," +
+			sexToString(dm[ii].sex) +  "," +
+			raceToString(dm[ii].race) +  "," +
 			strconv.Itoa(dm[ii].armcd) +  "," + 
 			dm[ii].arm +  "," +
 			strconv.Itoa(dm[ii].dmdy) +
@@ -263,5 +330,4 @@ func main() {
 
 	// Write to disk
 	w.Flush()
-	
 }

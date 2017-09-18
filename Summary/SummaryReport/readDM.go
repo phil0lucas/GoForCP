@@ -8,13 +8,24 @@ import (
 	"strconv"
 )
 
+type tAge *int
+
 type DMrec struct {
 	usubjid string
-	age		int
+	Age		tAge
 	sex		string
 	race	string
 	armcd	int
 	Arm		string
+}
+
+func setAge (s string) tAge {
+	a, err := strconv.Atoi(s)
+	if err == nil {
+		return &a
+	} else {
+		return nil
+	}
 }
 
 func ReadFile(infile *string) []*DMrec {
@@ -36,14 +47,14 @@ func ReadFile(infile *string) []*DMrec {
 		}
 		str := scanner.Text()
 		usubjid := strings.Split(str, ",")[4]
-		age, _ := strconv.Atoi(strings.Split(str, ",")[11])
+		age := setAge(strings.Split(str, ",")[11])
 		sex := strings.Split(str, ",")[14]
 		race := strings.Split(str, ",")[15]
 		armcd, _ := strconv.Atoi(strings.Split(str, ",")[16])
 		arm := strings.Split(str, ",")[17]
 		dmx = append(dmx, &DMrec{
 			usubjid: usubjid,
-			age: age,
+			Age: age,
 			sex: sex,
 			race: race,
 			armcd: armcd,

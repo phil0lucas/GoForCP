@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/phil0lucas/GoForCP/Summary/SummaryReport"
 	"github.com/jung-kurt/gofpdf"
+	"github.com/montanaflynn/stats"
 	"flag"
 	"time"
 	"log"
@@ -14,7 +15,7 @@ import (
 )
 
 var infile = flag.String("i", "../DM/dm.csv", "Name of input file")
-var outfile = flag.String("o", "summary07.pdf", "Name of output file")
+var outfile = flag.String("o", "summary08.pdf", "Name of output file")
 
 type headers struct {
 	head1Left	string
@@ -45,15 +46,17 @@ func titles() *headers{
 		head3Left	:	"Protocol XYZ123",
 		head4Centre	:	"Study XYZ123",
 		head5Centre	:	"Summary of Demographic Data by Treatment Arm",
-		head6Centre	:	"All Subjects",
+		head6Centre	:	"All Randomised Subjects",
 	}
 	return h
 }
 
-func footnotes() *footers{
+func footnotes(screened string, failures string) *footers{
+	f2 := "Of the original " + screened + " screened subjects, " + 
+		failures + " were excluded at Screening and are not counted"
 	f := &footers{
 		foot1Left	:	"A long explanatory text",
-		foot2Left	:	"All subjects are included, including the screening failures",
+		foot2Left	:	f2,
 		foot3Left	:	"All measurements were taken at the screening visit",
 		foot4Left	:	"Page %d of {nb}",
 		foot4Right	:	"Run: " + timeStamp(),
@@ -73,13 +76,41 @@ func getCurrentProgram () string {
 	return ex + ".go"
 }
 
-// func columnHeaders() {
-// 
-// }
+// 	Provides a map of keys for each TG and Overall, the toal number screened and the SFs
+func countByTG (dm []*SummaryReport.DMrec) map[string]int {
+	m := make(map[string]int)
+	m["Screened"] = len(dm)
+	for _, v := range dm {
+		if v.Arm != "" {
+			m[v.Arm]++
+		} else {
+			m["SF"]++
+		}
+	}
 	
-func WriteReport(outputFile *string, h *headers, f *footers, nTG map[string]int) error {					
+	total := 0
+	for k, v := range m{
+		if k != "SF" && k != "Screened" {
+			total += v
+		}
+	}
+	m["Overall"] = total
+	return m
+}
+
+func selectTGs(m map[string]int) []string {
+	var s []string
+	for k, _ := range m{
+		if k != "SF" && k != "Screened" {
+			s = append(s, k)
+		}
+	}
+	return s
+}
+	
+func WriteReport(outputFile *string, h *headers, f *footers, 
+				 nTG map[string]int, nAge map[string]int, meanSD map[string]string) error {					
 	pdf := gofpdf.New("L", "mm", "A4", "")
-	fmt.Printf("%T\n", pdf)
 	pdf.SetHeaderFunc(func() {
 		pdf.SetFont("Courier", "", 10)
 		pdf.CellFormat(0, 10, (*h).head1Left, "0", 0, "L", false, 0, "")
@@ -136,7 +167,25 @@ func WriteReport(outputFile *string, h *headers, f *footers, nTG map[string]int)
 	}
 	pdf.Ln(8)	
 	
+//	Number of non-missing Ages By TG
+	textSlice2 := []string{"Age (years)", "Number of Non-Missing", 
+		strconv.Itoa(nAge["Placebo"]), 
+		strconv.Itoa(nAge["Active"]),
+		strconv.Itoa(nAge["Overall"])}
+	for i, str := range textSlice2 {
+		pdf.CellFormat(colWidthSlice[i], 8, str, "", 0, colJustSlice[i], false, 0, "")
+	}
+	pdf.Ln(4)
 	
+// 	Mean and Standard Deviation by TG
+	textSlice3 := []string{" ", "Mean (SD)", 
+		meanSD["Placebo"], 
+		meanSD["Active"],
+		meanSD["Overall"]}
+	for i, str := range textSlice3 {
+		pdf.CellFormat(colWidthSlice[i], 8, str, "", 0, colJustSlice[i], false, 0, "")
+	}
+	pdf.Ln(4)	
 	
 	
 	
@@ -146,26 +195,26 @@ func WriteReport(outputFile *string, h *headers, f *footers, nTG map[string]int)
 	return err
 } 
 
-func countByTG (dm []*SummaryReport.DMrec) map[string]int {
-	m := make(map[string]int)
+func removeSF(dm []*SummaryReport.DMrec) []*SummaryReport.DMrec {
+	var dm2 []*SummaryReport.DMrec
 	for _, v := range dm {
-		m[v.Arm]++
+		// Exclude SFs
+		if v.Arm != "" {
+// 			fmt.Println(v)
+			dm2 = append(dm2, v)
+		}
 	}
-	
-	total := 0
-	for _, v := range m{
-		total += v
-	}
-	m["Overall"] = total
-	return m
+	return dm2
 }
+
 
 func nMiss (dm []*SummaryReport.DMrec) map[string]int {
 	m := make(map[string]int)
 // 	total := 0
 	for _, v := range dm {
-		if v.Age != -999 {
+		if v.Age != nil {
 			m[v.Arm]++
+			m["Overall"]++
 		} else {
 			m["Missing"]++
 		}
@@ -173,27 +222,63 @@ func nMiss (dm []*SummaryReport.DMrec) map[string]int {
 	return m
 }
 
+func meanAndSD (dm []*SummaryReport.DMrec, tg []string) map[string]string {
+	m := make(map[string]string)
+	for _, s := range tg {
+		var ages []float64
+		for _, v := range dm {
+			if v.Age != nil {
+				if s == v.Arm {
+// 					fmt.Println(*v.Age)
+					ages = append(ages, float64(*v.Age))
+				} else if s == "Overall" {
+					ages = append(ages, float64(*v.Age))
+				}
+			}
+		}
+		fmt.Println(len(ages))
+		mean, _ := stats.Mean(ages)
+		fmt.Println(s)
+		fmt.Println(mean)
+		sd, _ := stats.StandardDeviationPopulation(ages)
+		fmt.Println(sd)
+		c_stat := strconv.FormatFloat(mean, 'f', 2, 64) + " (" + 
+			strconv.FormatFloat(sd, 'f', 2, 64) + ")"
+		fmt.Println(c_stat)
+		m[s] = c_stat
+	}
+	return m
+}
+
+
 func main() {
 	// Read the file and dump into the slice of structs
 	dm := SummaryReport.ReadFile(infile)
-// 	fmt.Printf("%T\n", dm)
-// 	for _, v := range dm {
-// 		fmt.Println(*dm[0])
+// 	for i, _ := range dm {
+// 		fmt.Println(*dm[i])
 // 	}
 
 // 	Compute number of subjects by treatment group
 	nTG := countByTG(dm)
-	fmt.Println(nTG)
+// 	fmt.Println(nTG)
+
+	TGs := selectTGs(nTG)
+// 	fmt.Println(TGs)
 	
-// 	Turn values into strings
-		
-// 	Compute number of non-mising Age values by TG
-	nAge := nMiss(dm)
-	fmt.Println(nAge)
-		
-// 	Turn values into strings
+// Create version of dm without the SFs
+	dm2 := removeSF(dm)
+// 	for _, v := range dm2 {
+// 		fmt.Println(v)
+// 	}
+// 	fmt.Println(len(dm2))
+
+// 	Compute number of non-missing Age values by TG
+	nAge := nMiss(dm2)
+// 	fmt.Println(nAge)
 		
 // 	Compute mean of age by TG and SD by TG
+	meanSD := meanAndSD(dm2, TGs)
+	fmt.Println(meanSD)
 		
 // 	Turn Mean and SD values into strings
 		
@@ -212,8 +297,10 @@ func main() {
 // 	New Report 
 	
 	h := titles()
-	f := footnotes()
-	err := WriteReport(outfile, h, f, nTG)
+	f_scr := strconv.Itoa(nTG["Screened"])
+	f_sf := strconv.Itoa(nTG["SF"])
+	f := footnotes(f_scr, f_sf)
+	err := WriteReport(outfile, h, f, nTG, nAge, meanSD)
 	if err != nil {
 		fmt.Println(err)
 	}
