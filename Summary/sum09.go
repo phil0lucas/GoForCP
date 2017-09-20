@@ -15,7 +15,7 @@ import (
 )
 
 var infile = flag.String("i", "../DM/dm.csv", "Name of input file")
-var outfile = flag.String("o", "summary08.pdf", "Name of output file")
+var outfile = flag.String("o", "summary09.pdf", "Name of output file")
 
 type headers struct {
 	head1Left	string
@@ -109,7 +109,11 @@ func selectTGs(m map[string]int) []string {
 }
 	
 func WriteReport(outputFile *string, h *headers, f *footers, 
-				 nTG map[string]int, nAge map[string]int, meanSD map[string]string) error {					
+				 nTG map[string]int, nAge map[string]int, 
+				 meansd map[string]string,
+				 median map[string]string,
+				 min map[string]string,
+				 max map[string]string) error {
 	pdf := gofpdf.New("L", "mm", "A4", "")
 	pdf.SetHeaderFunc(func() {
 		pdf.SetFont("Courier", "", 10)
@@ -179,13 +183,43 @@ func WriteReport(outputFile *string, h *headers, f *footers,
 	
 // 	Mean and Standard Deviation by TG
 	textSlice3 := []string{" ", "Mean (SD)", 
-		meanSD["Placebo"], 
-		meanSD["Active"],
-		meanSD["Overall"]}
+		meansd["Placebo"], 
+		meansd["Active"],
+		meansd["Overall"]}
 	for i, str := range textSlice3 {
 		pdf.CellFormat(colWidthSlice[i], 8, str, "", 0, colJustSlice[i], false, 0, "")
 	}
 	pdf.Ln(4)	
+	
+//  Median
+	textSlice4 := []string{" ", "Median", 
+		median["Placebo"], 
+		median["Active"],
+		median["Overall"]}
+	for i, str := range textSlice4 {
+		pdf.CellFormat(colWidthSlice[i], 8, str, "", 0, colJustSlice[i], false, 0, "")
+	}
+	pdf.Ln(4)		
+	
+//  Minimum
+	textSlice5 := []string{" ", "Minimum", 
+		min["Placebo"], 
+		min["Active"],
+		min["Overall"]}
+	for i, str := range textSlice5 {
+		pdf.CellFormat(colWidthSlice[i], 8, str, "", 0, colJustSlice[i], false, 0, "")
+	}
+	pdf.Ln(4)			
+	
+//  Maximum
+	textSlice6 := []string{" ", "Maximum", 
+		max["Placebo"], 
+		max["Active"],
+		max["Overall"]}
+	for i, str := range textSlice6 {
+		pdf.CellFormat(colWidthSlice[i], 8, str, "", 0, colJustSlice[i], false, 0, "")
+	}
+	pdf.Ln(8)	
 	
 	
 	
@@ -224,50 +258,48 @@ func nMiss (dm []*SummaryReport.DMrec) map[string]int {
 
 func prepareData(dm []*SummaryReport.DMrec, tg []string) map[string][]float64{
 	m := make(map[string][]float64)
-	
+	for _, s := range tg {
+		var out []float64
+		for _, v := range dm {
+			if v.Age != nil {
+				if s == v.Arm {
+					out = append(out, float64(*v.Age))
+				} else if s == "Overall" {
+					out = append(out, float64(*v.Age))
+				}
+			}
+		}
+		m[s] = out
+	}
 	return m
 }
 
 
-
-// func meanAndSD (dm []*SummaryReport.DMrec, tg []string) map[string]string {
-// 	m := make(map[string]string)
-// 	for _, s := range tg {
-// 		var ages []float64
-// 		for _, v := range dm {
-// 			if v.Age != nil {
-// 				if s == v.Arm {
-// // 					fmt.Println(*v.Age)
-// 					ages = append(ages, float64(*v.Age))
-// 				} else if s == "Overall" {
-// 					ages = append(ages, float64(*v.Age))
-// 				}
-// 			}
-// 		}
-// 		fmt.Println(len(ages))
-// 		mean, _ := stats.Mean(ages)
-// 		fmt.Println(s)
-// 		fmt.Println(mean)
-// 		sd, _ := stats.StandardDeviationPopulation(ages)
-// 		fmt.Println(sd)
-// 		c_stat := strconv.FormatFloat(mean, 'f', 2, 64) + " (" + 
-// 			strconv.FormatFloat(sd, 'f', 2, 64) + ")"
-// 		fmt.Println(c_stat)
-// 		m[s] = c_stat
-// 	}
-// 	return m
-// }
-
-// func mStats(dm []*SummaryReport.DMrec, tg []string, stat string) map[string]string {
-// 	
-// }
+func mStat (indata map[string][]float64, stat string, dec int) map[string]string {
+	m := make(map[string]string)
+	for i, v := range indata {
+		var result float64
+		if stat == "Mean" {
+			result, _ = stats.Mean(v)
+		} else if stat == "SD" {
+			result, _ = stats.StandardDeviationPopulation(v)
+		} else if stat == "Median" {
+			result, _ = stats.Median(v)
+		} else if stat == "Min" {
+			result, _ = stats.Min(v)
+		} else if stat == "Max" {
+			result, _ = stats.Max(v)
+		}		
+		c_stat := strconv.FormatFloat(result, 'f', dec, 64)
+		m[i] = c_stat
+// 		fmt.Println(err)
+	}
+	return m
+}
 
 func main() {
 	// Read the file and dump into the slice of structs
 	dm := SummaryReport.ReadFile(infile)
-// 	for i, _ := range dm {
-// 		fmt.Println(*dm[i])
-// 	}
 
 // 	Compute number of subjects by treatment group
 	nTG := countByTG(dm)
@@ -278,39 +310,49 @@ func main() {
 	
 // Create version of dm without the SFs
 	dm2 := removeSF(dm)
-// 	for _, v := range dm2 {
-// 		fmt.Println(v)
-// 	}
-// 	fmt.Println(len(dm2))
 
 // 	Compute number of non-missing Age values by TG
 	nAge := nMiss(dm2)
-// 	fmt.Println(nAge)
 		
-// 	Compute mean of age by TG and SD by TG
-// 	meanSD := meanAndSD(dm2, TGs)
-// 	fmt.Println(meanSD)
-// 		
-// // 	Compute median values of Age by TG
-// 	med := mStats(dm2, TGs, "MED")
+//	Prepare the data for passing to the stats functions
+//	Select only the TGs to display
+//	Remove the missing values.
+	rMiss := prepareData(dm2, TGs)	
+	
+	
+// 	Compute stats of age by TG
+	mean := mStat(rMiss, "Mean", 2)
+	sd := mStat(rMiss, "SD", 2)
+	
+//	Concatenate mean and SD values into a display string
+	meansd := make(map[string]string)
+	for k, _ := range mean {
+		meansd[k] = mean[k] + " (" + sd[k] + ")"
+	}
+	median := mStat(rMiss, "Median", 0)
+	min := mStat(rMiss, "Min", 0)
+	max := mStat(rMiss, "Max", 0)
 		
-// 	Turn median values into strings
-		
-// 	Compute min values of Age by TG
-		
-// 	Turn min values into strings
-		
-// 	Compute max values of Age by TG
-		
-// 	Turn max values into strings
+//  N and % of subjects by gender and TG
+// 	hits := make(map[string]map[string]int)
+	
+	
+	
+//  N and % of subjects by race and TG
+	
+	
+	
+	
+	
+	
 	
 // 	New Report 
-	
+
 	h := titles()
 	f_scr := strconv.Itoa(nTG["Screened"])
 	f_sf := strconv.Itoa(nTG["SF"])
 	f := footnotes(f_scr, f_sf)
-	err := WriteReport(outfile, h, f, nTG, nAge, meanSD)
+	err := WriteReport(outfile, h, f, nTG, nAge, meansd, median, min, max)
 	if err != nil {
 		fmt.Println(err)
 	}
