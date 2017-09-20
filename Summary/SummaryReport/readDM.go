@@ -13,8 +13,8 @@ type tAge *int
 type DMrec struct {
 	usubjid string
 	Age		tAge
-	sex		string
-	race	string
+	Sex		string
+	Race	string
 	armcd	int
 	Arm		string
 }
@@ -55,8 +55,8 @@ func ReadFile(infile *string) []*DMrec {
 		dmx = append(dmx, &DMrec{
 			usubjid: usubjid,
 			Age: age,
-			sex: sex,
-			race: race,
+			Sex: sex,
+			Race: race,
 			armcd: armcd,
 			Arm: arm,
 		})
