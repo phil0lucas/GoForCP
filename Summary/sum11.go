@@ -15,7 +15,7 @@ import (
 )
 
 var infile = flag.String("i", "../DM/dm.csv", "Name of input file")
-var outfile = flag.String("o", "summary1.pdf", "Name of output file")
+var outfile = flag.String("o", "summary11.pdf", "Name of output file")
 
 type headers struct {
 	head1Left	string
@@ -113,7 +113,8 @@ func WriteReport(outputFile *string, h *headers, f *footers,
 				 meansd map[string]string,
 				 median map[string]string,
 				 min map[string]string,
-				 max map[string]string) error {
+				 max map[string]string,
+				 sexPct map[Key]string) error {
 	pdf := gofpdf.New("L", "mm", "A4", "")
 	pdf.SetHeaderFunc(func() {
 		pdf.SetFont("Courier", "", 10)
@@ -220,6 +221,35 @@ func WriteReport(outputFile *string, h *headers, f *footers,
 		pdf.CellFormat(colWidthSlice[i], 8, str, "", 0, colJustSlice[i], false, 0, "")
 	}
 	pdf.Ln(8)	
+	
+//	Gender	
+	uV := uniqueValues (sexPct)
+	fmt.Println(uV)
+	var iter int
+	var col1text string
+	sexFmt := map[string]string{"F":"Female", "M": "Male"}
+	for _, v := range uV{
+		fmt.Println(v)
+		index, ok := sexPct[Key{v,"Placebo"}]
+		fmt.Println(index)
+		fmt.Println(ok)
+		if iter == 0 {
+			col1text = "Gender"
+		} else {
+			col1text = ""
+		}
+		textSlice7 := []string{col1text, sexFmt[v], 
+			sexPct[Key{v, "Placebo"}], 
+			sexPct[Key{v, "Active"}],
+			sexPct[Key{v, "Overall"}]}
+		for i, str := range textSlice7 {
+			pdf.CellFormat(colWidthSlice[i], 8, str, "", 0, colJustSlice[i], false, 0, "")
+		}
+		pdf.Ln(4)
+		iter++
+	}
+	
+	
 	
 	
 	
@@ -328,19 +358,40 @@ func countSexByTG (dm []*SummaryReport.DMrec) map[Key]int{
 func pctSexByTG (m map[Key]int, tg map[string]int) map[Key]string{
 	outmap := make(map[Key]string)
 	for k, v := range m {
-		fmt.Println(k.arm)
-		fmt.Println(tg[k.arm])
-		fmt.Println(v)
+// 		fmt.Println(k.arm)
+// 		fmt.Println(tg[k.arm])
+// 		fmt.Println(v)
 		var pct float64
 		pct = (float64(v) / float64(tg[k.arm])) * 100
-		fmt.Println(pct)
+// 		fmt.Println(pct)
 		c_pct := strconv.FormatFloat(pct, 'f', 2, 64)
-		fmt.Println(c_pct)
+// 		fmt.Println(c_pct)
 		c_stat := strconv.FormatInt(int64(v), 10) + " (" +
 			c_pct + "%)"
-		fmt.Println(c_stat)
+// 		fmt.Println(c_stat)
+		outmap[k] = c_stat
 	}
 	return outmap
+}
+
+func stringInSlice(a string, list []string) bool {
+    for _, b := range list {
+        if b == a {
+            return true
+        }
+    }
+    return false
+}
+
+//	Determine the unique values of the non-TG key
+func uniqueValues (m map[Key]string) []string {
+	var uValues []string
+	for k, _ := range m {
+		if !stringInSlice (k.sex , uValues) {
+			uValues = append(uValues, k.sex)
+		}
+	}
+	return uValues
 }
 
 func main() {
@@ -381,10 +432,13 @@ func main() {
 		
 //  N and % of subjects by gender and TG
 	keyValues := countSexByTG(dm2)
-	fmt.Println(keyValues)
+// 	fmt.Println(keyValues)
 	
 	pctMap := pctSexByTG(keyValues, nTG)
-	fmt.Println(pctMap)
+// 	fmt.Println(pctMap)
+	
+	
+	
 //  N and % of subjects by race and TG
 	
 	
@@ -399,7 +453,7 @@ func main() {
 	f_scr := strconv.Itoa(nTG["Screened"])
 	f_sf := strconv.Itoa(nTG["SF"])
 	f := footnotes(f_scr, f_sf)
-	err := WriteReport(outfile, h, f, nTG, nAge, meansd, median, min, max)
+	err := WriteReport(outfile, h, f, nTG, nAge, meansd, median, min, max, 							pctMap)
 	if err != nil {
 		fmt.Println(err)
 	}
