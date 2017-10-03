@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/phil0lucas/GoForCP/Listing/Listing"
-	"github.com/phil0lucas/GoForCP/CPUtils"
-	"github.com/jung-kurt/gofpdf"
+
 	"flag"
 // 	"time"
 // 	"log"
 // 	"os"
-// 	"strconv"
+	"strconv"
 // 	"path/filepath"
 // 	"strings"
+	"github.com/phil0lucas/GoForCP/Listing/Listing"
+	"github.com/phil0lucas/GoForCP/CPUtils"
+	"github.com/jung-kurt/gofpdf"	
 )
 
 var infile = flag.String("i", "../DM/dm.csv", "Name of input file")
@@ -70,12 +71,15 @@ func main() {
 // 	Read the input file into a struct of values
 	dm := Listing.ReadFile(infile)
 	fmt.Printf("%T\n", dm)
+	
+	nTG := CPUtils.CountByTG(dm)
 
 // 	Determine the unique treatment group (Arm) values
 	TGlist := CPUtils.UniqueTG(dm)
 	fmt.Println(TGlist)
 	
 	pdf := gofpdf.New("L", "mm", "A4", "")
+	h := titles()
 	pdf.SetHeaderFunc(func() {
 		pdf.SetFont("Courier", "", 10)
 		pdf.CellFormat(0, 10, (*h).head1Left, "0", 0, "L", false, 0, "")
@@ -93,10 +97,13 @@ func main() {
 		pdf.CellFormat(0, 10, (*h).head6Centre, "0", 0, "C", false, 0, "")
 		pdf.Ln(10)		
 	})
+	f_scr := strconv.Itoa(nTG["Screened"])
+	f_sf := strconv.Itoa(nTG["SF"])
+	f := footnotes(f_scr, f_sf)
 	pdf.SetFooterFunc(func() {
 		pdf.SetY(-30)
 		pdf.SetFont("Courier", "", 10)
-		pdf.CellFormat(0, 10, (*f).foot1Left, "0", 0, "L", false, 0, "")
+		pdf.CellFormat(0, 10, (*f).foot1Left, "T", 0, "L", false, 0, "")
 		pdf.Ln(4)
 		pdf.CellFormat(0, 10, (*f).foot2Left, "0", 0, "L", false, 0, "")
 		pdf.Ln(4)
@@ -110,15 +117,51 @@ func main() {
 	pdf.AliasNbPages("")	
 	pdf.AddPage()
 // 	For each TG, get a subset of the data based on the Arm value
-/*	
-	for _, v := range TGlist {
-		subDM := Listing.SubsetByArm(dm, v)
-		fmt.Println(v)
-		fmt.Println(subDM)
-	}
-*/
 
+	
+	colHeaderSlice := []string{"SiteID-SubjectID", "Date of Birth", "Age (Years)", "Gender", "Ethnicity"}
+	colWidthSlice := []float64{40, 40, 40, 40, 40}
+	colJustSlice := []string{"L", "L", "L", "L", "L"}
+// 	for i, str := range colHeaderSlice {
+// 		pdf.CellFormat(colWidthSlice[i], 8, str, "TB", 0, colJustSlice[i], false, 0, "")
+// 	}
+	pdf.Ln(8)	
+	for _, v := range TGlist {
+		subDM := CPUtils.SubsetByArm(dm, v)
+// 		fmt.Println(v)
+// 		fmt.Println(subDM)
+		pdf.CellFormat(0, 8, v, "", 0, "L", false, 0, "")
+		pdf.Ln(8)
+		for i, str := range colHeaderSlice {
+			pdf.CellFormat(colWidthSlice[i], 8, str, "TB", 0, colJustSlice[i], false, 0, "")
+		}
+		pdf.Ln(8)
+		for _, dd := range subDM {
+			pdf.CellFormat(40, 8, CPUtils.SiteSubj(dd.Usubjid), "", 0, "L", false, 0, "")
+			pdf.CellFormat(40, 8, CPUtils.Pdate2str(dd.Birthdate), "", 0, "L", false, 0, "")
+			pdf.CellFormat(40, 8, CPUtils.Pint2str(dd.Age), "", 0, "L", false, 0, "")
+			pdf.CellFormat(40, 8, CPUtils.Ptr2str(dd.Sex), "", 0, "L", false, 0, "")
+			pdf.CellFormat(40, 8, CPUtils.Ptr2str(dd.Race), "", 0, "L", false, 0, "")
+			pdf.Ln(4)
+			if pdf.GetY() > float64(160) {
+				pdf.AddPage()
+				pdf.CellFormat(0, 8, v, "", 0, "L", false, 0, "")
+				pdf.Ln(8)
+				for i, str := range colHeaderSlice {
+					pdf.CellFormat(colWidthSlice[i], 8, str, "TB", 0, colJustSlice[i], false, 0, "")
+				}
+				pdf.Ln(8)
+			}
+		}
+		if v != TGlist[len(TGlist)-1] {
+			pdf.AddPage()
+		}
+	}
+	
+	
+	
+	
 // 	Output
-	err := pdf.OutputFileAndClose(*outputFile)
+	err := pdf.OutputFileAndClose(*outfile)
 	fmt.Println(err)
 }

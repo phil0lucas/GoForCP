@@ -5,6 +5,7 @@ import (
 	"time"
 	"os"
 	"strconv"
+	"strings"
 )	
 
 //	Capital letter ensures this will be exported in the package
@@ -59,7 +60,7 @@ func UniqueTG(dm []*DMrec) []string {
 func SubsetByArm (dm []*DMrec, value string) []*DMrec {
 	var subdm []*DMrec
 	for _, v := range dm {
-		if v.Arm == value {
+		if v.Arm == value || value == "Overall"{
 			subdm = append(subdm, v)
 		}
 	}
@@ -98,4 +99,56 @@ func Str2Date (s string) *time.Time {
     } else {
         return nil
     }	
+}
+
+func CountByTG (dm []*DMrec) map[string]int {
+	m := make(map[string]int)
+	m["Screened"] = len(dm)
+	for _, v := range dm {
+		if v.Arm != "" {
+			m[v.Arm]++
+		} else {
+			m["SF"]++
+		}
+	}
+	
+	total := 0
+	for k, v := range m{
+		if k != "SF" && k != "Screened" {
+			total += v
+		}
+	}
+	m["Overall"] = total
+	return m
+}
+
+//	Usubjid is displayed with leading studyid removed in
+//	the style siteid-subjidr
+func SiteSubj (usubjid string) string {
+	sl := strings.Split(usubjid,"-")
+	return strings.Join(sl[1:],"-")
+}	
+
+func Pdate2str(d *time.Time) string {
+	if d != nil{
+		return d.Format("2006-01-02")
+	} else {
+		return ""
+	}
+}
+
+func Pint2str(d *int) string {
+	if d != nil{
+		return strconv.Itoa(*d)
+	} else {
+		return ""
+	}
+}
+
+func Ptr2str(s *string) string {
+	if s != nil{
+		return *s
+	} else {
+		return ""
+	}	
 }
