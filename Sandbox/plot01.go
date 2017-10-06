@@ -8,6 +8,8 @@ import (
 	"image/color"
 	"log"
 	"math/rand"
+	"math"
+	"errors"
 // 	"testing"
 
 	"gonum.org/v1/plot"
@@ -15,6 +17,125 @@ import (
 	"gonum.org/v1/plot/vg"
 	"gonum.org/v1/plot/vg/draw"
 )
+
+var (
+	// DefaultLineStyle is the default style for drawing
+	// lines.
+	DefaultLineStyle = draw.LineStyle{
+		Color:    color.Black,
+		Width:    vg.Points(1),
+		Dashes:   []vg.Length{},
+		DashOffs: 0,
+	}
+
+	// DefaultGlyphStyle is the default style used
+	// for gyph marks.
+	DefaultGlyphStyle = draw.GlyphStyle{
+		Color:  color.Black,
+		Radius: vg.Points(2.5),
+		Shape:  draw.RingGlyph{},
+	}
+)
+
+var (
+	ErrInfinity = errors.New("Infinite data point")
+	ErrNaN      = errors.New("NaN data point")
+	ErrNoData   = errors.New("No data points")
+)
+
+var (
+	// DefaultGridLineStyle is the default style for grid lines.
+	DefaultGridLineStyle = draw.LineStyle{
+		Color: color.Gray{128},
+		Width: vg.Points(0.25),
+	}
+)
+
+// Scatter implements the Plotter interface, drawing
+// a glyph for each of a set of points.
+type Scatter struct {
+	// XYs is a copy of the points for this scatter.
+	XYs
+
+	// GlyphStyle is the style of the glyphs drawn
+	// at each point.
+	draw.GlyphStyle
+}
+
+// NewScatter returns a Scatter that uses the
+// default glyph style.
+func NewScatter(xys XYer) (*Scatter, error) {
+	data, err := CopyXYs(xys)
+	if err != nil {
+		return nil, err
+	}
+	return &Scatter{
+		XYs:        data,
+		GlyphStyle: DefaultGlyphStyle,
+	}, err
+}
+
+// XYs implements the XYer interface.
+type XYs []struct{ X, Y float64 }
+
+// XYer wraps the Len and XY methods.
+type XYer interface {
+	// Len returns the number of x, y pairs.
+	Len() int
+
+	// XY returns an x, y pair.
+	XY(int) (x, y float64)
+}
+
+// CopyXYs returns an XYs that is a copy of the x and y values from
+// an XYer, or an error if one of the data points contains a NaN or
+// Infinity.
+func CopyXYs(data XYer) (XYs, error) {
+	cpy := make(XYs, data.Len())
+	for i := range cpy {
+		cpy[i].X, cpy[i].Y = data.XY(i)
+		if err := CheckFloats(cpy[i].X, cpy[i].Y); err != nil {
+			return nil, err
+		}
+	}
+	return cpy, nil
+}
+
+func (xys XYs) Len() int {
+	return len(xys)
+}
+
+// CheckFloats returns an error if any of the arguments are NaN or Infinity.
+func CheckFloats(fs ...float64) error {
+	for _, f := range fs {
+		switch {
+		case math.IsNaN(f):
+			return ErrNaN
+		case math.IsInf(f, 0):
+			return ErrInfinity
+		}
+	}
+	return nil
+}
+
+// Grid implements the plot.Plotter interface, drawing
+// a set of grid lines at the major tick marks.
+type Grid struct {
+	// Vertical is the style of the vertical lines.
+	Vertical draw.LineStyle
+
+	// Horizontal is the style of the horizontal lines.
+	Horizontal draw.LineStyle
+}
+
+// NewGrid returns a new grid with both vertical and
+// horizontal lines using the default grid line style.
+func NewGrid() *Grid {
+	return &Grid{
+		Vertical:   DefaultGridLineStyle,
+		Horizontal: DefaultGridLineStyle,
+	}
+}
 
 // ExampleScatter draws some scatter points, a line,
 // and a line with points.
