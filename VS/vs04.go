@@ -29,7 +29,7 @@ import (
 	"math/rand"
 	"os"
 // 	"sort"
-// 	"strconv"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -169,6 +169,7 @@ func main() {
 	// Pass the opened file to a scanner
 	scanner := bufio.NewScanner(file)
 
+	// For each subject
 	for i := 0; scanner.Scan(); i++ {
 		if err := scanner.Err(); err != nil {
 			fmt.Fprintln(os.Stderr, "error reading from file:", err)
@@ -179,23 +180,25 @@ func main() {
 		usubjid := strings.Split(str, ",")[3]
 		subjid := strings.Split(str, ",")[1]
 		siteid := strings.Split(str, ",")[2]
-// 		dmdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[5])
-// 		endv := strings.Split(str, ",")[6]
-// 		endvn, _ := strconv.Atoi(endv)
-// 		armcd, _ := strconv.Atoi(strings.Split(str, ",")[9])
-		fmt.Printf("Study= %s Subject=%s Subjid=%s Siteid=%s\n", studyid, usubjid, subjid, siteid)
-// 		fmt.Printf("Subject %s\n", usubjid)
+		dmdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[5])
+		endv := strings.Split(str, ",")[6]
+		endvn, _ := strconv.Atoi(endv)
+		armcd, _ := strconv.Atoi(strings.Split(str, ",")[9])
+		fmt.Printf("Study=%s Subject=%s Subjid=%s Siteid=%s\n", studyid, usubjid, subjid, siteid)
+		fmt.Printf("%v %v %v %v\n", dmdtc, endv, endvn, armcd)
 
 		// Add in the visits up to the generated end-visit
 		// Subjects with just visit 0 are screening failures.
 		// Subjects with a final visit number < 14 are withdrawers.
 
 		// Test codes
-// 		for j := 0; j < len(testcodes); j++ {
-// 			baseline := genBaseline(testcodes[j])
-// 			//fmt.Printf("Test code %s value %v\n", testcodes[j], baseline)
-// 			vstestcd := testcodes[j]
-// 			vstest := testnames[j]
+		for j := 0; j < len(testcodes); j++ {
+			vstestcd := testcodes[j]
+			vstest := testnames[j]
+			fmt.Printf("Testcode=%s Test=%s\n", vstestcd, vstest)
+			baseline := genBaseline(testcodes[j])
+			fmt.Printf("Test code %s value %v\n", testcodes[j], baseline)
+
 // 			vsorresu, vsstresu := getUnits(vstestcd)
 // 			//fmt.Printf("   Test code %s\n", vstestcd)
 // 			var vsblfl bool
@@ -233,8 +236,8 @@ func main() {
 // 				//fmt.Println(vs[i])
 // 			}
 
-// 		}
-	}
+		}	//	End j loop
+	}	// End i loop
 	
 	/* Rubbish
 	rand.Seed(time.Now().UTC().UnixNano())

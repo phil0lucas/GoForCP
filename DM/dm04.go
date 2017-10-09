@@ -21,19 +21,11 @@
 // - ARM     Char 7  Treatment Arm
 // - DMDY    Num     Study Day of collection
 
-
-// Need to change this to set a small random percentage of values to 'missing'.
-// Missing will need to be a specific value per type e.g. -999 for an age.
-// Perhaps this also implies a type of 'Age' which implements a method such
-// as 'setMissing'.
-// If multiple variables of different types need to be set in this way, 
-// then can define an interface as a way of collecting the types which can be 
-// set in this way.
-
+// 	Screening Failure subjects will be included and have missing values
+//	for some of their data fields
 package main
 
 import (
-    //"linux_amd64/github.com/phil0lucas/GoForCP/InjectMV"
 	"bufio"
 	"fmt"
 	"os"
@@ -41,29 +33,11 @@ import (
 	"time"
 	"flag"
 	"math/rand"
-	"strconv"
-	"log"
+// 	"strconv"
+// 	"log"
+	
+	"github.com/phil0lucas/GoForCP/CPUtils"
 )
-
-/*
-//	Capital letter ensures this will be exported in the package
-//	Those variables which can be missing are modelled with pointers.
-type DMrec struct {
-	Usubjid 	string
-	Age			*int
-	Sex			*string
-	Race		*string
-	Armcd		int
-	Arm			string
-	Birthdate 	*time.Time
-}
-*/
-
-
-type birthdate time.Time
-type age int
-type sex string
-type race string
 
 // This will mirror the metadata above with more natural types
 type dmrec struct {
@@ -72,33 +46,32 @@ type dmrec struct {
 	usubjid string
 	subjid  string
 	siteid  string
-	rfstdtc time.Time
-	rfendtc time.Time
+	rfstdtc *time.Time
+	rfendtc *time.Time
 	dmdtc   time.Time
 	invid	string
 	invname string
 	country string
 	ageu	string
-	age		*age
-	brthdtc *birthdate
-	sex		*sex
-	race	*race
-	armcd	int
-	arm		string
+	age		*int
+	brthdtc *time.Time
+	sex		*string
+	race	*string
+	armcd	*int
+	arm		*string
 	dmdy    int
 }
 
 // The program will be run with flags to specify the input & output files
 var infile = flag.String("i", "../SC/sc2.csv", "Name of input file")
-var outfile = flag.String("o", "dm.csv", "Name of output file")
+var outfile = flag.String("o", "dm2.csv", "Name of output file")
 
 // Various lookups for random selection
 var invid = map[int]string{0:"AAA", 1:"BBB", 2:"CCC", 3:"DDD", 4:"EEE"}
 var invnm = map[int]string{0:"Smith", 1:"Jones", 2:"Robinson", 3:"Brown", 4:"Green"}
-var country = map[int]string{0:"GBR", 1:"USA", 2:"FRA", 3:"GER", 4:"SWE"}
+var ctrymap = map[int]string{0:"GBR", 1:"USA", 2:"FRA", 3:"GER", 4:"SWE"}
 var sexmp = map[int]string{0:"M", 1:"F"}
 var racemp = map[int]string{0:"White", 1:"Black", 2:"Asian"}
-var arm = map[int]string{0:"Placebo", 1:"Active"}
 
 const (
 	domain 	= "DM"
@@ -106,49 +79,23 @@ const (
 	dmdy	= 0
 )
 
+/*
 // Randomly select the investigator ID and name 
 func getInv() (string, string) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	key := rand.Intn(len(invid))
 	return invid[key], invnm[key]
 }
+*/
 
-// Randomly select country from a slice
-func getCty() string{
-	rand.Seed(time.Now().UTC().UnixNano())
-	key := rand.Intn(len(country))
-	return country[key]
-}
 
 
 
 // min age = 20, max age = 80
-func getAge() *age {
-	if flagMiss(0) == false {
+func getAge() *int {
+	if CPUtils.FlagMiss(0) == false {
 		rand.Seed(time.Now().UTC().UnixNano())
-		r := age(rand.Intn(59) + 20)
-		return &r
-	} else {
-		return nil
-	}
-}
-
-// Randomly assign a gender to the subject
-func getSex() *sex {
-	if flagMiss(0) == false {
-		rand.Seed(time.Now().UTC().UnixNano())
-		s := sex(sexmp[rand.Intn(len(sexmp))])
-		return &s
-	} else {
-		return nil
-	}
-}
-
-// Randomly assign a race to the subject
-func getRace() *race {
-	if flagMiss(0) == false {	
-		rand.Seed(time.Now().UTC().UnixNano())
-		r := race(racemp[rand.Intn(len(racemp))])
+		r := rand.Intn(59) + 20
 		return &r
 	} else {
 		return nil
@@ -156,23 +103,24 @@ func getRace() *race {
 }
 
 // Generate a birth date based on the recorded age
-func getBday(dmdtc time.Time, age *age) *birthdate {
+func getBday(dmdtc time.Time, age *int) *time.Time {
 	// Birth date is recorded at screening, which is DMDTC here.
 	// Having randomly generated an age, calculate the last possible 
 	// birthday at that age and then subtract a random number
 	// of days between 0 and 364
 	if age != nil {
-		v := int(*age)
+		v := *age
 		_bdate := dmdtc.AddDate(-v, 0, 0)
 		rand.Seed(time.Now().UTC().UnixNano())
 		offset := rand.Intn(364)
-		b := birthdate(_bdate.AddDate(0,0,-offset))
+		b := _bdate.AddDate(0,0,-offset)
 		return &b
 	} else {
 		return nil
 	}
 }
 
+/*
 func (s *birthdate) dateFmt() string {
     // The receiver s is a pointer to a RefEndDate
     // If the value of the pointer is not nil then
@@ -208,7 +156,7 @@ func raceToString(a *race) string {
 		return ""
 	}
 }
-
+*/
 
 func main() {
 	flag.Parse()
@@ -221,7 +169,7 @@ func main() {
 	defer file.Close()
 
 	// Output slice of pointers to structs
-	var dm []*dmrec
+// 	var dm []*dmrec
 
 	// Pass the opened file to a scanner
 	scanner := bufio.NewScanner(file)
@@ -233,45 +181,68 @@ func main() {
 		}
 		str := scanner.Text()
 		studyid := strings.Split(str, ",")[0]
+		fmt.Println(studyid)
 		usubjid := strings.Split(str, ",")[3]
+		fmt.Println(usubjid)
 		subjid := strings.Split(str, ",")[1]
+		fmt.Println(subjid)
 		siteid := strings.Split(str, ",")[2]
+		fmt.Println(siteid)
 		
-		// Need to trap the error output.
-		rfstdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[7])
-		rfendtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[8])
+		// Screening date
 		dmdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[5])
+		CPUtils.PrintDate(dmdtc)
 		
-		invid, invname := getInv()
-		country := getCty()
+		// First date of dosing for randomized subjects.
+		// For screening failures this will be a nil pointer.
+		rfstdtc := CPUtils.Str2Date(strings.Split(str, ",")[7])
+		fmt.Printf("%T\n", rfstdtc)
+		//	Last day of dosing.
+		//	This will also be missing if the subject is a screening failure
+		rfendtc := CPUtils.Str2Date(strings.Split(str, ",")[8])
+		fmt.Printf("%T\n", rfendtc)
+		
+		
+		iKey, invid := CPUtils.RandItem(invid)
+		invname := invnm[iKey]
+		fmt.Printf("%s, %s\n", invid, invname)
+		_, country := CPUtils.RandItem(ctrymap)
+		fmt.Printf("Country code: %s\n", country)
 		age := getAge()
+		CPUtils.PrintPint(age)
 		brthdtc := getBday(dmdtc, age)
-		sex := getSex()
-		race := getRace()
-		armcd, _ := strconv.Atoi(strings.Split(str, ",")[9])
-		arm := strings.Split(str, ",")[10]
+		CPUtils.PrintDateP(brthdtc)
 		
-		dm = append(dm, &dmrec{
-			studyid: studyid,
-			domain:  domain,
-			usubjid: usubjid,
-			subjid: subjid,
-			siteid: siteid,
-			rfstdtc: rfstdtc,
-			rfendtc: rfendtc,
-			dmdtc: dmdtc,
-			invid: invid,
-			invname: invname,
-			country: country,
-			ageu: ageu,
-			age: age,
-			brthdtc: brthdtc,
-			sex: sex,
-			race: race,
-			armcd: armcd,
-			arm: arm,
-			dmdy: dmdy})
-// 			fmt.Println(*dm[i])
+		sex := CPUtils.RandItemP(sexmp)
+		fmt.Println(CPUtils.Ptr2str(sex))
+		race := CPUtils.RandItemP(racemp)
+		fmt.Println(CPUtils.Ptr2str(race))		
+		armcd := CPUtils.Str2Int(strings.Split(str, ",")[9])
+		CPUtils.PrintPint(armcd)
+		arm := strings.Split(str, ",")[10]
+		fmt.Println(arm)
+// 		
+// 		dm = append(dm, &dmrec{
+// 			studyid: studyid,
+// 			domain:  domain,
+// 			usubjid: usubjid,
+// 			subjid: subjid,
+// 			siteid: siteid,
+// 			rfstdtc: rfstdtc,
+// 			rfendtc: rfendtc,
+// 			dmdtc: dmdtc,
+// 			invid: invid,
+// 			invname: invname,
+// 			country: country,
+// 			ageu: ageu,
+// 			age: age,
+// 			brthdtc: brthdtc,
+// 			sex: sex,
+// 			race: race,
+// 			armcd: armcd,
+// 			arm: arm,
+// 			dmdy: dmdy})
+// // 			fmt.Println(*dm[i])
 	}
 	
 	// Injection of some 'missing values' into:
@@ -296,7 +267,7 @@ func main() {
 //         }
 //     }
 	
-	
+/*	
 // 	// Output file writing section
 	fo, err := os.Create(*outfile)
 	if err != nil {
@@ -338,4 +309,5 @@ func main() {
 
 	// Write to disk
 	w.Flush()
+*/
 }

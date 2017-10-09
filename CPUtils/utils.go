@@ -1,24 +1,14 @@
 package CPUtils
 
 import (
+	"fmt"
 	"log"
 	"time"
 	"os"
 	"strconv"
 	"strings"
+	"math/rand"
 )	
-
-//	Capital letter ensures this will be exported in the package
-//	Those variables which can be missing are modelled with pointers.
-type DMrec struct {
-	Usubjid 	string
-	Age			*int
-	Sex			*string
-	Race		*string
-	Armcd		int
-	Arm			string
-	Birthdate 	*time.Time
-}
 
 //	Determine if a string is within a slice of strings
 func StringInSlice(a string, list []string) bool {
@@ -43,28 +33,6 @@ func GetCurrentProgram () string {
 	ex, err := os.Executable()
     if err != nil { log.Fatal(err) }
 	return ex + ".go"
-}
-
-//	From the slice of pointers to th
-func UniqueTG(dm []*DMrec) []string {
-	var s []string
-	for _, v := range dm{
-		if v.Arm != "" && !StringInSlice(v.Arm, s) {
-			s = append(s, v.Arm)
-		}
-	}
-	s = append(s, "Overall")
-	return s
-}
-
-func SubsetByArm (dm []*DMrec, value string) []*DMrec {
-	var subdm []*DMrec
-	for _, v := range dm {
-		if v.Arm == value || value == "Overall"{
-			subdm = append(subdm, v)
-		}
-	}
-	return subdm
 }
 
 //	Here, the input string should be in the form of an int.
@@ -101,34 +69,6 @@ func Str2Date (s string) *time.Time {
     }	
 }
 
-func CountByTG (dm []*DMrec) map[string]int {
-	m := make(map[string]int)
-	m["Screened"] = len(dm)
-	for _, v := range dm {
-		if v.Arm != "" {
-			m[v.Arm]++
-		} else {
-			m["SF"]++
-		}
-	}
-	
-	total := 0
-	for k, v := range m{
-		if k != "SF" && k != "Screened" {
-			total += v
-		}
-	}
-	m["Overall"] = total
-	return m
-}
-
-//	Usubjid is displayed with leading studyid removed in
-//	the style siteid-subjidr
-func SiteSubj (usubjid string) string {
-	sl := strings.Split(usubjid,"-")
-	return strings.Join(sl[1:],"-")
-}	
-
 func Pdate2str(d *time.Time) string {
 	if d != nil{
 		return d.Format("2006-01-02")
@@ -151,4 +91,74 @@ func Ptr2str(s *string) string {
 	} else {
 		return ""
 	}	
+}
+
+//	Randomly selects a variable as having a missing value
+func FlagMiss (threshold float64) bool {
+	
+	if threshold == 0.0 {
+		threshold = 0.05
+	}
+	
+	rand.Seed(time.Now().UTC().UnixNano())
+	if rand.Float64() >= threshold {
+		return false
+	} else {
+		return true
+	}
+}
+
+// Select a random member from a slice of strings
+func Choice(s []string) string {
+	// Allocate seed for generating random numbers
+	rand.Seed(time.Now().UTC().UnixNano())
+	return s[rand.Intn(len(s))]
+}
+
+// This pads the string in the 1st arg to the length
+// in the 3rd arg with the char in the 2nd arg
+func LeftPad2Len(s string, padStr string, overallLen int) string {
+	var padCountInt int
+	padCountInt = 1 + ((overallLen - len(padStr)) / len(padStr))
+	var retStr = strings.Repeat(padStr, padCountInt) + s
+	return retStr[(len(retStr) - overallLen):]
+}
+
+func PrintDate(t time.Time) {
+	fmt.Println(t.Format("2006-01-02"))
+}
+
+func PrintDateP(t *time.Time) {
+	if t == nil {
+		fmt.Println("Missing Value")
+	} else {
+		fmt.Println(t.Format("2006-01-02"))
+	}
+}
+
+func PrintPint(p *int) {
+	if p == nil {
+		fmt.Println("Missing Value")
+	} else {
+		fmt.Println(*p)
+	}
+}
+
+//	Select random key and value from a map
+func RandItem (m map[int]string) (int, string) {
+	rand.Seed(time.Now().UTC().UnixNano())
+	key := rand.Intn(len(m))
+	return key, m[key]
+}
+
+//	Select random value from a map or set to missing
+func RandItemP (m map[int]string) *string {
+	if FlagMiss(0) == false {
+		rand.Seed(time.Now().UTC().UnixNano())
+		key := rand.Intn(len(m))
+		value := m[key]
+		return &value
+	} else {
+		return nil
+	}
 }
