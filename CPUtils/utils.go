@@ -93,6 +93,24 @@ func Ptr2str(s *string) string {
 	}	
 }
 
+func Pfloat2Pstr(d *float64, dec int) *string {
+	if d != nil{
+		v := strconv.FormatFloat(*d, 'f', dec, 64)
+		return &v
+	} else {
+		return nil
+	}
+}
+
+func Pfloat2str(d *float64, dec int) string {
+	if d != nil{
+		v := strconv.FormatFloat(*d, 'f', dec, 64)
+		return v
+	} else {
+		return ""
+	}
+}
+
 //	Randomly selects a variable as having a missing value
 func FlagMiss (threshold float64) bool {
 	
@@ -127,7 +145,7 @@ func LeftPad2Len(s string, padStr string, overallLen int) string {
 func PrintDate(t time.Time) {
 	fmt.Println(t.Format("2006-01-02"))
 }
-
+// Can these similar functions be rationalized via an interface??
 func PrintDateP(t *time.Time) {
 	if t == nil {
 		fmt.Println("Missing Value")
@@ -137,6 +155,14 @@ func PrintDateP(t *time.Time) {
 }
 
 func PrintPint(p *int) {
+	if p == nil {
+		fmt.Println("Missing Value")
+	} else {
+		fmt.Println(*p)
+	}
+}
+
+func PrintPfloat(p *float64) {
 	if p == nil {
 		fmt.Println("Missing Value")
 	} else {

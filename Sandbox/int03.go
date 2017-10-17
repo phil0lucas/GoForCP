@@ -32,7 +32,8 @@ func (n ndate) PrintDate() {
 }
 
 func main() {
-	gSlice := []gender{"M", "F", "F", "M", "M"}
-	s := gSlice.uniqueValues()
-	fmt.Println(s)
+	t := time.Now()
+	p := &t
+	t.PrintDate()
+	p.PrintDate()
 }

@@ -25,13 +25,15 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-// 	"log"
+	"log"
 	"math/rand"
 	"os"
-// 	"sort"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
+	
+	"github.com/phil0lucas/GoForCP/CPUtils"	
 )
 
 // This will mirror the metadata above with more natural types.
@@ -62,7 +64,7 @@ type vsrec struct {
 type vsrecs []*vsrec
 
 // The program will be run with flags to specify the input & output files
-var infile = flag.String("i", "../SC/sc.csv", "Name of input file")
+var infile = flag.String("i", "../SC/sc2.csv", "Name of input file")
 var outfile = flag.String("o", "vs4.csv", "Name of output file")
 var testcodes = []string{"SBP", "DBP", "HR"}
 var testnames = []string{"Systolic Blood Pressure", "Diastolic Blood Pressure", "Heart Rate"}
@@ -70,15 +72,6 @@ var testnames = []string{"Systolic Blood Pressure", "Diastolic Blood Pressure", 
 const (
 	domain = "VS"
 )
-
-func flagMiss () bool {
-	rand.Seed(time.Now().UTC().UnixNano())
-	if rand.Float64() >= 0.05 {
-		return false
-	} else {
-		return true
-	}
-}
 
 func randValue(max, min int) float64 {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -98,24 +91,33 @@ func genBaseline(tcode string) float64 {
 	return 0.0
 }
 
-func getOrigRes(baseline float64, vstestcd string, visitnum int, armcd int) float64 {
-	if armcd == 0 {
-		if visitnum == 0 {
-			return baseline
+func getOrigRes(baseline float64, visitnum int, armcd *int) *float64 {
+	if armcd == nil {
+		return nil
+	} else { 
+		if *armcd == 0 {
+			if visitnum == 0 {
+				return &baseline
+			} else {
+				v := baseline + randValue(5, -5)
+				return &v
+			}
 		} else {
-			return baseline + randValue(5, -5)
-		}
-	} else {
-		if visitnum == 0 {
-			return baseline
-		} else if visitnum < 5 {
-			return baseline*0.975 + randValue(2, -3)
-		} else if visitnum < 8 {
-			return baseline*0.95 + randValue(1, -5)
-		} else if visitnum < 11 {
-			return baseline*0.925 + randValue(0, -7)
-		} else {
-			return baseline*0.9 + randValue(-3, -10)
+			if visitnum == 0 {
+				return &baseline
+			} else if visitnum < 5 {
+				v := baseline*0.975 + randValue(2, -3)
+				return &v
+			} else if visitnum < 8 {
+				v := baseline*0.95 + randValue(1, -5)
+				return &v
+			} else if visitnum < 11 {
+				v := baseline*0.925 + randValue(0, -7)
+				return &v
+			} else {
+				v := baseline*0.9 + randValue(-3, -10)
+				return &v
+			}
 		}
 	}
 }
@@ -123,8 +125,10 @@ func getOrigRes(baseline float64, vstestcd string, visitnum int, armcd int) floa
 func getUnits(testcode string) (string, string) {
 	if testcode == "HR" {
 		return "bpm", "bpm"
-	} else {
+	} else if testcode == "SBP" || testcode == "DBP" {
 		return "mmHg", "mmHg"
+	} else {
+		return "", ""
 	}
 }
 
@@ -153,6 +157,22 @@ func (t vsrecs) Less(i, j int) bool {
 	return t[i].visitnum < t[j].visitnum
 }
 
+func tcodes (vstcd []string, vstdesc []string, index int, rtype int) (string, string) {
+	if rtype > 0 {
+		return vstcd[index], vstdesc[index]
+	} else {
+		return "", ""
+	}
+}
+
+func flagBline (visit int) bool {
+	if visit == 1 {
+		return true
+	} else {
+		return false
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -164,7 +184,7 @@ func main() {
 	defer file.Close()
 
 	// Output slice of pointers to structs
-// 	var vs vsrecs
+	var vs vsrecs
 
 	// Pass the opened file to a scanner
 	scanner := bufio.NewScanner(file)
@@ -180,81 +200,70 @@ func main() {
 		usubjid := strings.Split(str, ",")[3]
 		subjid := strings.Split(str, ",")[1]
 		siteid := strings.Split(str, ",")[2]
+		rectype, _ := strconv.Atoi(strings.Split(str, ",")[4])
+		fmt.Printf("Rectype %v\n", rectype)
 		dmdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[5])
 		endv := strings.Split(str, ",")[6]
 		endvn, _ := strconv.Atoi(endv)
-		armcd, _ := strconv.Atoi(strings.Split(str, ",")[9])
+		
+// 		The ARMCD will be needed to create the data but will 
+// 		not be included in the final data set. Recall this will
+// 		be a pointer to an int
+		armcd := CPUtils.Str2Int(strings.Split(str, ",")[9])
 		fmt.Printf("Study=%s Subject=%s Subjid=%s Siteid=%s\n", studyid, usubjid, subjid, siteid)
-		fmt.Printf("%v %v %v %v\n", dmdtc, endv, endvn, armcd)
-
+		fmt.Printf("%v %v %v \n", dmdtc, endv, endvn)
+		CPUtils.PrintPint(armcd)
+		
 		// Add in the visits up to the generated end-visit
 		// Subjects with just visit 0 are screening failures.
 		// Subjects with a final visit number < 14 are withdrawers.
 
 		// Test codes
 		for j := 0; j < len(testcodes); j++ {
-			vstestcd := testcodes[j]
-			vstest := testnames[j]
+			vstestcd, vstest := tcodes(testcodes, testnames, j, rectype)
 			fmt.Printf("Testcode=%s Test=%s\n", vstestcd, vstest)
+			
 			baseline := genBaseline(testcodes[j])
 			fmt.Printf("Test code %s value %v\n", testcodes[j], baseline)
 
-// 			vsorresu, vsstresu := getUnits(vstestcd)
-// 			//fmt.Printf("   Test code %s\n", vstestcd)
-// 			var vsblfl bool
+			vsorresu, vsstresu := getUnits(vstestcd)
+			fmt.Printf("   Test code units %s, %s\n", vsorresu, vsstresu)
 
 			// Visits
-// 			for k := 0; k <= endvn; k++ {
-// 				if k == 1 {
-// 					vsblfl = true
-// 				} else {
-// 					vsblfl = false
-// 				}
-// 				vsorres := getOrigRes(baseline, vstestcd, k, armcd)
-// 				vsdtc := dmdtc.AddDate(0, 0, (k * 14))
-// 				vsdy := k * 14
+			for k := 0; k <= endvn; k++ {
+				vsblfl := flagBline(k)
+				fmt.Println(vsblfl)
+				// Recall ARMCD is now a pointer to an int.
+				// VSORRES is a pointer to a float64, nil being a missing value
+				vsorres := getOrigRes(baseline, k, armcd)
+				CPUtils.PrintPfloat(vsorres)
+				vsdtc := dmdtc.AddDate(0, 0, (k * 14))
+				vsdy := k * 14
 
-// 				vs = append(vs, vsrec{
-// 					studyid:  studyid,
-// 					domain:   domain,
-// 					usubjid:  usubjid,
-// 					subjid:   subjid,
-// 					siteid:   siteid,
-// 					visitnum: k,
-// 					vstestcd: vstestcd,
-// 					vstest:   vstest,
-// 					vsorres:  vsorres,
-// 					vsstresn: vsorres,
-// 					vsstresc: strconv.FormatFloat(vsorres, 'f', 2, 64),
-// 					vsorresu: vsorresu,
-// 					vsstresu: vsstresu,
-// 					vsblfl:   vsblfl,
-// 					vsdtc:    vsdtc,
-// 					vsdy:     vsdy,
-// 				})
-// 
-// 				//fmt.Println(vs[i])
-// 			}
+				vs = append(vs, &vsrec{
+					studyid:  studyid,
+					domain:   domain,
+					usubjid:  usubjid,
+					subjid:   subjid,
+					siteid:   siteid,
+					visitnum: k,
+					vstestcd: vstestcd,
+					vstest:   vstest,
+					vsorres:  vsorres,
+					vsstresn: vsorres,
+					vsstresc: CPUtils.Pfloat2Pstr(vsorres, 2),
+					vsorresu: &vsorresu,
+					vsstresu: &vsstresu,
+					vsblfl:   vsblfl,
+					vsdtc:    vsdtc,
+					vsdy:     vsdy,
+				})
 
+				fmt.Println(vs[i])
+			} // End k loop
 		}	//	End j loop
 	}	// End i loop
 	
-	/* Rubbish
-	rand.Seed(time.Now().UTC().UnixNano())
-	for ii, _ := range vs{
-        randno := rand.Intn(100)
-        if randno < 5 {
-            vs[ii].vsorres = -0.0
-            vs[ii].vsstresn = -0.0
-            vs[ii].vsstresc = "-0.0"
-        }
-    }
-    */
-	
-	
-	
-
-/*	
 	// Sort the struct of VS 'records'
 	sort.Sort(vsrecs(vs))
 	// fmt.Println(vs)
@@ -270,10 +279,8 @@ func main() {
 		count++
 		vs[ii].vsseq = count
 	}
-	//fmt.Println(vs)
-*/
+	fmt.Println(vs)
 
-/*	
 	// Write to external file.
 	fo, err := os.Create(*outfile)
 	if err != nil {
@@ -295,11 +302,11 @@ func main() {
 				strconv.Itoa(vs[ii].visitnum) + "," +
 				vs[ii].vstestcd + "," +
 				vs[ii].vstest + "," +
-				strconv.FormatFloat(vs[ii].vsorres, 'f', 1, 64) + "," +
-				strconv.FormatFloat(vs[ii].vsstresn, 'f', 1, 64) + "," +
-				vs[ii].vsstresc + "," +
-				vs[ii].vsorresu + "," +
-				vs[ii].vsstresu + "," +
+				CPUtils.Pfloat2str(vs[ii].vsorres, 1) + "," +
+				CPUtils.Pfloat2str(vs[ii].vsstresn, 1) + "," +
+				CPUtils.Ptr2str(vs[ii].vsstresc) + "," +
+				CPUtils.Ptr2str(vs[ii].vsorresu) + "," +
+				CPUtils.Ptr2str(vs[ii].vsstresu) + "," +
 				strconv.FormatBool(vs[ii].vsblfl) + "," +
 				vs[ii].vsdtc.Format("2006-01-02") + "," +
 				strconv.Itoa(vs[ii].vsdy) +
@@ -312,6 +319,5 @@ func main() {
 	}
 
 	// Write to disk
-	w.Flush()
-*/	
+	w.Flush()	
 }
