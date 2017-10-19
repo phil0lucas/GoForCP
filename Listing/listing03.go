@@ -15,7 +15,7 @@ import (
 	"github.com/jung-kurt/gofpdf"	
 )
 
-var infile = flag.String("i", "../DM/dm.csv", "Name of input file")
+var infile = flag.String("i", "../DM/dm2.csv", "Name of input file")
 var outfile = flag.String("o", "listing02.pdf", "Name of output file")
 
 

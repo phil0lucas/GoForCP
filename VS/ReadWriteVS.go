@@ -19,11 +19,10 @@
 // - VSDTC      Date    Date of visit in ISO8601
 // - VSDY    	Num     Study Day of collection
 
-package main
+package VS
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -39,33 +38,31 @@ import (
 // This will mirror the metadata above with more natural types.
 // The elements modelled as pointers may have missing values i.e.
 // a nil pointer
-type vsrec struct {
-	studyid  string
-	domain   string
-	usubjid  string
-	subjid   string
-	siteid   string
-	vsseq    int
-	visitnum int
-	vstestcd string
-	vstest   string
-	vsorres  *float64
-	vsorresu *string
-	vsstresc *string
-	vsstresn *float64
-	vsstresu *string
-	vsblfl   bool
-	vsdtc    time.Time
-	vsdy     int
+type Vsrec struct {
+	Studyid  string
+	Domain   string
+	Usubjid  string
+	Subjid   string
+	Siteid   string
+	Vsseq    int
+	Visitnum int
+	Vstestcd string
+	Vstest   string
+	Vsorres  *float64
+	Vsorresu *string
+	Vsstresc *string
+	Vsstresn *float64
+	Vsstresu *string
+	Vsblfl   bool
+	Vsdtc    time.Time
+	Vsdy     int
 }
 
 //	The type vsrecs models a 'data set' as a slice of 
 //	pointers to vsrec structs.
-type vsrecs []*vsrec
+type vsrecs []*Vsrec
 
 // The program will be run with flags to specify the input & output files
-var infile = flag.String("i", "../SC/sc2.csv", "Name of input file")
-var outfile = flag.String("o", "vs4.csv", "Name of output file")
 var testcodes = []string{"SBP", "DBP", "HR"}
 var testnames = []string{"Systolic Blood Pressure", "Diastolic Blood Pressure", "Heart Rate"}
 
@@ -141,20 +138,20 @@ func (t vsrecs) Swap(i, j int) {
 }
 
 func (t vsrecs) Less(i, j int) bool {
-	if t[i].usubjid < t[j].usubjid {
+	if t[i].Usubjid < t[j].Usubjid {
 		return true
 	}
-	if t[i].usubjid > t[j].usubjid {
+	if t[i].Usubjid > t[j].Usubjid {
 		return false
 	}
 	// If USUBJIDs are equal
-	if t[i].vstestcd < t[j].vstestcd {
+	if t[i].Vstestcd < t[j].Vstestcd {
 		return true
 	}
-	if t[i].vstestcd > t[j].vstestcd {
+	if t[i].Vstestcd > t[j].Vstestcd {
 		return false
 	}
-	return t[i].visitnum < t[j].visitnum
+	return t[i].Visitnum < t[j].Visitnum
 }
 
 func tcodes (vstcd []string, vstdesc []string, index int, rtype int) (string, string) {
@@ -173,9 +170,7 @@ func flagBline (visit int) bool {
 	}
 }
 
-func main() {
-	flag.Parse()
-
+func WriteVS(infile, outfile *string) {
 	// open the file and pass it to a Scanner object
 	file, err := os.Open(*infile)
 	if err != nil {
@@ -201,7 +196,7 @@ func main() {
 		subjid := strings.Split(str, ",")[1]
 		siteid := strings.Split(str, ",")[2]
 		rectype, _ := strconv.Atoi(strings.Split(str, ",")[4])
-		fmt.Printf("Rectype %v\n", rectype)
+// 		fmt.Printf("Rectype %v\n", rectype)
 		dmdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[5])
 		endv := strings.Split(str, ",")[6]
 		endvn, _ := strconv.Atoi(endv)
@@ -209,10 +204,10 @@ func main() {
 // 		The ARMCD will be needed to create the data but will 
 // 		not be included in the final data set. Recall this will
 // 		be a pointer to an int
-		armcd := CPUtils.Str2Int(strings.Split(str, ",")[9])
-		fmt.Printf("Study=%s Subject=%s Subjid=%s Siteid=%s\n", studyid, usubjid, subjid, siteid)
-		fmt.Printf("%v %v %v \n", dmdtc, endv, endvn)
-		CPUtils.PrintPint(armcd)
+		armcd := CPUtils.Str2IntP(strings.Split(str, ",")[9])
+// 		fmt.Printf("Study=%s Subject=%s Subjid=%s Siteid=%s\n", studyid, usubjid, subjid, siteid)
+// 		fmt.Printf("%v %v %v \n", dmdtc, endv, endvn)
+// 		CPUtils.PrintIntP(armcd)
 		
 		// Add in the visits up to the generated end-visit
 		// Subjects with just visit 0 are screening failures.
@@ -221,45 +216,45 @@ func main() {
 		// Test codes
 		for j := 0; j < len(testcodes); j++ {
 			vstestcd, vstest := tcodes(testcodes, testnames, j, rectype)
-			fmt.Printf("Testcode=%s Test=%s\n", vstestcd, vstest)
+// 			fmt.Printf("Testcode=%s Test=%s\n", vstestcd, vstest)
 			
 			baseline := genBaseline(testcodes[j])
-			fmt.Printf("Test code %s value %v\n", testcodes[j], baseline)
+// 			fmt.Printf("Test code %s value %v\n", testcodes[j], baseline)
 
 			vsorresu, vsstresu := getUnits(vstestcd)
-			fmt.Printf("   Test code units %s, %s\n", vsorresu, vsstresu)
+// 			fmt.Printf("   Test code units %s, %s\n", vsorresu, vsstresu)
 
 			// Visits
 			for k := 0; k <= endvn; k++ {
 				vsblfl := flagBline(k)
-				fmt.Println(vsblfl)
+// 				fmt.Println(vsblfl)
 				// Recall ARMCD is now a pointer to an int.
 				// VSORRES is a pointer to a float64, nil being a missing value
 				vsorres := getOrigRes(baseline, k, armcd)
-				CPUtils.PrintPfloat(vsorres)
+// 				CPUtils.PrintFloatP(vsorres)
 				vsdtc := dmdtc.AddDate(0, 0, (k * 14))
 				vsdy := k * 14
 
-				vs = append(vs, &vsrec{
-					studyid:  studyid,
-					domain:   domain,
-					usubjid:  usubjid,
-					subjid:   subjid,
-					siteid:   siteid,
-					visitnum: k,
-					vstestcd: vstestcd,
-					vstest:   vstest,
-					vsorres:  vsorres,
-					vsstresn: vsorres,
-					vsstresc: CPUtils.Pfloat2Pstr(vsorres, 2),
-					vsorresu: &vsorresu,
-					vsstresu: &vsstresu,
-					vsblfl:   vsblfl,
-					vsdtc:    vsdtc,
-					vsdy:     vsdy,
+				vs = append(vs, &Vsrec{
+					Studyid:  studyid,
+					Domain:   domain,
+					Usubjid:  usubjid,
+					Subjid:   subjid,
+					Siteid:   siteid,
+					Visitnum: k,
+					Vstestcd: vstestcd,
+					Vstest:   vstest,
+					Vsorres:  vsorres,
+					Vsstresn: vsorres,
+					Vsstresc: CPUtils.FloatP2StrP(vsorres, 2),
+					Vsorresu: &vsorresu,
+					Vsstresu: &vsstresu,
+					Vsblfl:   vsblfl,
+					Vsdtc:    vsdtc,
+					Vsdy:     vsdy,
 				})
 
-				fmt.Println(vs[i])
+// 				fmt.Println(vs[i])
 			} // End k loop
 		}	//	End j loop
 	}	// End i loop
@@ -273,13 +268,13 @@ func main() {
 	// scope will make each value 1
 	var count int
 	for ii := 0; ii < len(vs); ii++ {
-		if ii == 0 || ((vs[ii].usubjid != vs[ii-1].usubjid)) {
+		if ii == 0 || ((vs[ii].Usubjid != vs[ii-1].Usubjid)) {
 			count = 0
 		}
 		count++
-		vs[ii].vsseq = count
+		vs[ii].Vsseq = count
 	}
-	fmt.Println(vs)
+// 	fmt.Println(vs)
 
 	// Write to external file.
 	fo, err := os.Create(*outfile)
@@ -293,24 +288,24 @@ func main() {
 
 	for ii, _ := range vs {
 		bytesWritten, err := w.WriteString(
-			vs[ii].studyid + "," +
-				vs[ii].domain + "," +
-				vs[ii].subjid + "," +
-				vs[ii].siteid + "," +
-				vs[ii].usubjid + "," +
-				strconv.Itoa(vs[ii].vsseq) + "," +
-				strconv.Itoa(vs[ii].visitnum) + "," +
-				vs[ii].vstestcd + "," +
-				vs[ii].vstest + "," +
-				CPUtils.Pfloat2str(vs[ii].vsorres, 1) + "," +
-				CPUtils.Pfloat2str(vs[ii].vsstresn, 1) + "," +
-				CPUtils.Ptr2str(vs[ii].vsstresc) + "," +
-				CPUtils.Ptr2str(vs[ii].vsorresu) + "," +
-				CPUtils.Ptr2str(vs[ii].vsstresu) + "," +
-				strconv.FormatBool(vs[ii].vsblfl) + "," +
-				vs[ii].vsdtc.Format("2006-01-02") + "," +
-				strconv.Itoa(vs[ii].vsdy) +
-				"\n")
+			vs[ii].Studyid + "," +
+			vs[ii].Domain + "," +
+			vs[ii].Subjid + "," +
+			vs[ii].Siteid + "," +
+			vs[ii].Usubjid + "," +
+			strconv.Itoa(vs[ii].Vsseq) + "," +
+			strconv.Itoa(vs[ii].Visitnum) + "," +
+			vs[ii].Vstestcd + "," +
+			vs[ii].Vstest + "," +
+			CPUtils.FloatP2Str(vs[ii].Vsorres, 1) + "," +
+			CPUtils.FloatP2Str(vs[ii].Vsstresn, 1) + "," +
+			CPUtils.StrP2Str(vs[ii].Vsstresc) + "," +
+			CPUtils.StrP2Str(vs[ii].Vsorresu) + "," +
+			CPUtils.StrP2Str(vs[ii].Vsstresu) + "," +
+			strconv.FormatBool(vs[ii].Vsblfl) + "," +
+			vs[ii].Vsdtc.Format("2006-01-02") + "," +
+			strconv.Itoa(vs[ii].Vsdy) +
+			"\n")
 
 		if err != nil {
 			log.Fatal(err)
