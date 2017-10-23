@@ -2,22 +2,17 @@ package main
 
 import (
 	"fmt"
-
 	"flag"
-// 	"time"
-// 	"log"
-// 	"os"
 	"strconv"
-// 	"path/filepath"
-// 	"strings"
-	"github.com/phil0lucas/GoForCP/Listing/Listing"
+	"strings"
+	
+	"github.com/phil0lucas/GoForCP/DM"
 	"github.com/phil0lucas/GoForCP/CPUtils"
 	"github.com/jung-kurt/gofpdf"	
 )
 
-var infile = flag.String("i", "../DM/dm2.csv", "Name of input file")
-var outfile = flag.String("o", "listing02.pdf", "Name of output file")
-
+var infile = flag.String("i", "../CreateData/dm3.csv", "Name of input file")
+var outfile = flag.String("o", "listing03.pdf", "Name of output file")
 
 type headers struct {
 	head1Left	string
@@ -67,31 +62,6 @@ func footnotes(screened string, failures string) *footers{
 	return f
 }
 
-//	Moved here from CPUtils
-//	From the slice of pointers to the DM records
-func UniqueTG(dm []*DMrec) []string {
-	var s []string
-	for _, v := range dm{
-		if v.Arm != "" && !StringInSlice(v.Arm, s) {
-			s = append(s, v.Arm)
-		}
-	}
-	s = append(s, "Overall")
-	return s
-}
-
-//	Moved here from CPUtils
-func SubsetByArm (dm []*DMrec, value string) []*DMrec {
-	var subdm []*DMrec
-	for _, v := range dm {
-		if v.Arm == value || value == "Overall"{
-			subdm = append(subdm, v)
-		}
-	}
-	return subdm
-}
-
-//	Moved here from CPUtils.
 //	Usubjid is displayed with leading studyid removed in
 //	the style siteid-subjid
 func SiteSubj (usubjid string) string {
@@ -99,18 +69,19 @@ func SiteSubj (usubjid string) string {
 	return strings.Join(sl[1:],"-")
 }	
 
-
 func main() {
 // 	Read the input file into a struct of values
-	dm := Listing.ReadFile(infile)
-	fmt.Printf("%T\n", dm)
+	dm := DM.ReadDM(infile)
 	
-	nTG := CPUtils.CountByTG(dm)
+// 	Remove SF
+	dm2 := DM.RemoveSF(dm)
+	
+//	Count by treatment group
+	nTG := DM.CountByTG(dm)
 
 // 	Determine the unique treatment group (Arm) values
-	TGlist := CPUtils.UniqueTG(dm)
-	fmt.Println(TGlist)
-	
+	TGlist := DM.UniqueTG(dm2)
+		
 	pdf := gofpdf.New("L", "mm", "A4", "")
 	h := titles()
 	pdf.SetHeaderFunc(func() {
@@ -130,6 +101,7 @@ func main() {
 		pdf.CellFormat(0, 10, (*h).head6Centre, "0", 0, "C", false, 0, "")
 		pdf.Ln(10)		
 	})
+	
 	f_scr := strconv.Itoa(nTG["Screened"])
 	f_sf := strconv.Itoa(nTG["SF"])
 	f := footnotes(f_scr, f_sf)
@@ -151,7 +123,6 @@ func main() {
 	pdf.AddPage()
 // 	For each TG, get a subset of the data based on the Arm value
 
-	
 	colHeaderSlice := []string{"SiteID-SubjectID", "Date of Birth", "Age (Years)", "Gender", "Ethnicity"}
 	colWidthSlice := []float64{40, 40, 40, 40, 40}
 	colJustSlice := []string{"L", "L", "L", "L", "L"}
@@ -160,7 +131,7 @@ func main() {
 // 	}
 	pdf.Ln(8)	
 	for _, v := range TGlist {
-		subDM := CPUtils.SubsetByArm(dm, v)
+		subDM := DM.SubsetByArm(dm2, v)
 // 		fmt.Println(v)
 // 		fmt.Println(subDM)
 		pdf.CellFormat(0, 8, v, "", 0, "L", false, 0, "")
@@ -170,11 +141,11 @@ func main() {
 		}
 		pdf.Ln(8)
 		for _, dd := range subDM {
-			pdf.CellFormat(40, 8, CPUtils.SiteSubj(dd.Usubjid), "", 0, "L", false, 0, "")
-			pdf.CellFormat(40, 8, CPUtils.Pdate2str(dd.Birthdate), "", 0, "L", false, 0, "")
-			pdf.CellFormat(40, 8, CPUtils.Pint2str(dd.Age), "", 0, "L", false, 0, "")
-			pdf.CellFormat(40, 8, CPUtils.Ptr2str(dd.Sex), "", 0, "L", false, 0, "")
-			pdf.CellFormat(40, 8, CPUtils.Ptr2str(dd.Race), "", 0, "L", false, 0, "")
+			pdf.CellFormat(40, 8, SiteSubj(dd.Usubjid), "", 0, "L", false, 0, "")
+			pdf.CellFormat(40, 8, CPUtils.DateP2Str(dd.Brthdtc), "", 0, "L", false, 0, "")
+			pdf.CellFormat(40, 8, CPUtils.IntP2Str(dd.Age), "", 0, "L", false, 0, "")
+			pdf.CellFormat(40, 8, CPUtils.StrP2Str(dd.Sex), "", 0, "L", false, 0, "")
+			pdf.CellFormat(40, 8, CPUtils.StrP2Str(dd.Race), "", 0, "L", false, 0, "")
 			pdf.Ln(4)
 			if pdf.GetY() > float64(160) {
 				pdf.AddPage()
@@ -191,10 +162,7 @@ func main() {
 		}
 	}
 	
-	
-	
-	
-// 	Output
+	// 	Output
 	err := pdf.OutputFileAndClose(*outfile)
 	fmt.Println(err)
 }

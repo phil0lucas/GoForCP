@@ -211,3 +211,119 @@ func WriteDM(infile, outfile *string) {
 	// Write to disk
 	w.Flush()
 }
+
+func ReadDM(infile *string) []*Dmrec {
+	// open the file and pass it to a Scanner object
+	file, err := os.Open(*infile)
+	if err != nil {
+		panic(fmt.Sprintf("error opening %s: %v", *infile, err))
+	}
+	defer file.Close()
+	
+	// Pass the opened file to a scanner
+	scanner := bufio.NewScanner(file)
+
+	var dmx []*Dmrec
+	for i := 0; scanner.Scan(); i++ {
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintln(os.Stderr, "error reading from file:", err)
+			os.Exit(3)
+		}
+		str := scanner.Text()
+		studyid := strings.Split(str, ",")[0]
+		domain := strings.Split(str, ",")[1]
+		subjid := strings.Split(str, ",")[2]
+		siteid := strings.Split(str, ",")[3]
+		usubjid := strings.Split(str, ",")[4]
+		rfstdtc := CPUtils.Str2DateP(strings.Split(str, ",")[5])
+		rfendtc := CPUtils.Str2DateP(strings.Split(str, ",")[6])
+		dmdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[7])
+		invid := strings.Split(str, ",")[8]
+		invname := strings.Split(str, ",")[9]
+		country := strings.Split(str, ",")[10]
+		ageu := strings.Split(str, ",")[12]
+		age := CPUtils.Str2IntP(strings.Split(str, ",")[11])
+		bday := CPUtils.Str2DateP(strings.Split(str, ",")[13])
+		sex := CPUtils.Str2StrP(strings.Split(str, ",")[14])
+		race := CPUtils.Str2StrP(strings.Split(str, ",")[15])
+		armcd := CPUtils.Str2IntP(strings.Split(str, ",")[16])
+		arm := CPUtils.Str2StrP(strings.Split(str, ",")[17])
+		dmdy, _ := strconv.Atoi(strings.Split(str, ",")[18])
+		
+		dmx = append(dmx, &Dmrec{
+			Studyid: studyid,
+			Domain: domain,
+			Subjid: subjid,
+			Siteid: siteid,
+			Usubjid: usubjid,
+			Rfstdtc: rfstdtc,
+			Rfendtc: rfendtc,
+			Dmdtc: dmdtc,
+			Invid: invid,
+			Invname: invname,
+			Country: country,
+			Ageu: ageu,
+			Age: age,
+			Brthdtc: bday,
+			Sex: sex,
+			Race: race,
+			Armcd: armcd,
+			Arm: arm,
+			Dmdy: dmdy,
+		})
+	}
+	return dmx
+}
+
+func CountByTG (dm []*Dmrec) map[string]int {
+	m := make(map[string]int)
+	m["Screened"] = len(dm)
+	for _, v := range dm {
+		if v.Arm != nil {
+			m[*v.Arm]++
+		} else {
+			m["SF"]++
+		}
+	}
+	
+	total := 0
+	for k, v := range m{
+		if k != "SF" && k != "Screened" {
+			total += v
+		}
+	}
+	m["Overall"] = total
+	return m
+}
+
+func UniqueTG(dm []*Dmrec) []string {
+	var s []string
+	for _, v := range dm{
+		if v.Arm != nil && !CPUtils.StringInSlice(*v.Arm, s) {
+			s = append(s, *v.Arm)
+		}
+	}
+	s = append(s, "Overall")
+	return s
+}
+
+func RemoveSF(dm []*Dmrec) []*Dmrec {
+	var dm2 []*Dmrec
+	for _, v := range dm {
+		// Exclude SFs
+		if v.Arm != nil {
+			dm2 = append(dm2, v)
+		}
+	}
+	return dm2
+}
+
+func SubsetByArm (dm []*Dmrec, value string) []*Dmrec {
+	var subdm []*Dmrec
+	for _, v := range dm {
+		if *v.Arm == value || value == "Overall"{
+			subdm = append(subdm, v)
+		}
+	}
+	return subdm
+}

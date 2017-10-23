@@ -2,20 +2,22 @@ package main
 
 import (
 	"fmt"
-	"github.com/phil0lucas/GoForCP/Summary/SummaryReport"
-	"github.com/jung-kurt/gofpdf"
-	"github.com/montanaflynn/stats"
 	"flag"
-	"time"
-	"log"
-	"os"
-	"strconv"
+// 	"time"
+// 	"log"
+// 	"os"
+// 	"strconv"
 // 	"path/filepath"
 // 	"strings"
+	
+	"github.com/phil0lucas/GoForCP/CPUtils"
+	"github.com/phil0lucas/GoForCP/DM"	
+// 	"github.com/jung-kurt/gofpdf"
+// 	"github.com/montanaflynn/stats"	
 )
 
-var infile = flag.String("i", "../DM/dm2.csv", "Name of input file")
-var outfile = flag.String("o", "summary13.pdf", "Name of output file")
+var infile = flag.String("i", "../CreateData/dm3.csv", "Name of input file")
+var outfile = flag.String("o", "summary14.pdf", "Name of output file")
 
 type headers struct {
 	head1Left	string
@@ -59,46 +61,13 @@ func footnotes(screened string, failures string) *footers{
 		foot2Left	:	f2,
 		foot3Left	:	"All measurements were taken at the screening visit",
 		foot4Left	:	"Page %d of {nb}",
-		foot4Right	:	"Run: " + timeStamp(),
-		foot4Centre	:	getCurrentProgram(),
+		foot4Right	:	"Run: " + CPUtils.TimeStamp(),
+		foot4Centre	:	CPUtils.GetCurrentProgram(),
 	}
 	return f
 }
 
-/*
-func timeStamp () string {
-	t := time.Now()
-	return t.Format("2006-01-02 15:04:05")	
-}
 
-func getCurrentProgram () string {
-	ex, err := os.Executable()
-    if err != nil { log.Fatal(err) }
-	return ex + ".go"
-}
-*/
-
-// 	Provides a map of keys for each TG and Overall, the total number screened and the SFs
-func countByTG (dm []*SummaryReport.DMrec) map[string]int {
-	m := make(map[string]int)
-	m["Screened"] = len(dm)
-	for _, v := range dm {
-		if v.Arm != "" {
-			m[v.Arm]++
-		} else {
-			m["SF"]++
-		}
-	}
-	
-	total := 0
-	for k, v := range m{
-		if k != "SF" && k != "Screened" {
-			total += v
-		}
-	}
-	m["Overall"] = total
-	return m
-}
 
 func selectTGs(m map[string]int) []string {
 	var s []string
@@ -110,29 +79,7 @@ func selectTGs(m map[string]int) []string {
 	return s
 }
 
-//	Moved here from CPUtils
-func CountByTG (dm []*DMrec) map[string]int {
-	m := make(map[string]int)
-	m["Screened"] = len(dm)
-	for _, v := range dm {
-		if v.Arm != "" {
-			m[v.Arm]++
-		} else {
-			m["SF"]++
-		}
-	}
-	
-	total := 0
-	for k, v := range m{
-		if k != "SF" && k != "Screened" {
-			total += v
-		}
-	}
-	m["Overall"] = total
-	return m
-}
-
-	
+/*
 func WriteReport(outputFile *string, h *headers, f *footers, 
 				 nTG map[string]int, nAge map[string]int, 
 				 meansd map[string]string,
@@ -312,21 +259,10 @@ func WriteReport(outputFile *string, h *headers, f *footers,
 	fmt.Println(err)
 	return err
 } 
+*/
 
-func removeSF(dm []*SummaryReport.DMrec) []*SummaryReport.DMrec {
-	var dm2 []*SummaryReport.DMrec
-	for _, v := range dm {
-		// Exclude SFs
-		if v.Arm != "" {
-// 			fmt.Println(v)
-			dm2 = append(dm2, v)
-		}
-	}
-	return dm2
-}
-
-
-func nMiss (dm []*SummaryReport.DMrec) map[string]int {
+/*
+func nMiss (dm []*DM.Dmrec) map[string]int {
 	m := make(map[string]int)
 // 	total := 0
 	for _, v := range dm {
@@ -339,8 +275,10 @@ func nMiss (dm []*SummaryReport.DMrec) map[string]int {
 	}
 	return m
 }
+*/
 
-func prepareData(dm []*SummaryReport.DMrec, tg []string) map[string][]float64{
+/*
+func prepareData(dm []*DM.Dmrec, tg []string) map[string][]float64{
 	m := make(map[string][]float64)
 	for _, s := range tg {
 		var out []float64
@@ -357,8 +295,9 @@ func prepareData(dm []*SummaryReport.DMrec, tg []string) map[string][]float64{
 	}
 	return m
 }
+*/
 
-
+/*
 func mStat (indata map[string][]float64, stat string, dec int) map[string]string {
 	m := make(map[string]string)
 	for i, v := range indata {
@@ -380,13 +319,15 @@ func mStat (indata map[string][]float64, stat string, dec int) map[string]string
 	}
 	return m
 }
+*/
 
 type Key struct {
     sex string
     arm string
 }
 
-func countSexByTG (dm []*SummaryReport.DMrec) map[Key]int{
+/*
+func countSexByTG (dm []*DM.Dmrec) map[Key]int{
 	var r []Key
 	for _, v := range dm {
 // 		fmt.Println(v)
@@ -408,7 +349,9 @@ func countSexByTG (dm []*SummaryReport.DMrec) map[Key]int{
 
 	return m
 }
+*/
 
+/*
 func pctSexByTG (m map[Key]int, tg map[string]int) map[Key]string{
 	outmap := make(map[Key]string)
 	for k, v := range m {
@@ -427,18 +370,9 @@ func pctSexByTG (m map[Key]int, tg map[string]int) map[Key]string{
 	}
 	return outmap
 }
-
-/*
-func stringInSlice(a string, list []string) bool {
-    for _, b := range list {
-        if b == a {
-            return true
-        }
-    }
-    return false
-}
 */
 
+/*
 //	Determine the unique values of the non-TG key
 func uniqueValues (m map[Key]string) []string {
 	var uValues []string
@@ -455,7 +389,7 @@ type KeyR struct {
     arm string
 }
 
-func countRaceByTG (dm []*SummaryReport.DMrec) map[KeyR]int{
+func countRaceByTG (dm []*DM.Dmrec) map[KeyR]int{
 	var r []KeyR
 	for _, v := range dm {
 // 		fmt.Println(v)
@@ -475,8 +409,10 @@ func countRaceByTG (dm []*SummaryReport.DMrec) map[KeyR]int{
 	}
 	return m
 }
+*/
 
 //	Determine the unique values of the non-TG key
+/*
 func uniqueValuesR (m map[KeyR]string) []string {
 	var uValues []string
 	for k, _ := range m {
@@ -486,8 +422,6 @@ func uniqueValuesR (m map[KeyR]string) []string {
 	}
 	return uValues
 }
-
-
 
 func pctRaceByTG (m map[KeyR]int, tg map[string]int) map[KeyR]string{
 	outmap := make(map[KeyR]string)
@@ -504,20 +438,20 @@ func pctRaceByTG (m map[KeyR]int, tg map[string]int) map[KeyR]string{
 	}
 	return outmap
 }
-
+*/
 
 
 func main() {
 	// Read the file and dump into the slice of structs
-	dm := SummaryReport.ReadFile(infile)
+	dm := DM.ReadDM(infile)
+// 	fmt.Println(dm)
 
 // 	Compute number of subjects by treatment group
-	nTG := countByTG(dm)
+	nTG := DM.CountByTG(dm)
 	fmt.Println(nTG)
-
 	TGs := selectTGs(nTG)
-// 	fmt.Println(TGs)
-	
+	fmt.Println(TGs)
+/*	
 // Create version of dm without the SFs
 	dm2 := removeSF(dm)
 
@@ -557,11 +491,6 @@ func main() {
 	pctRace := pctRaceByTG(raceValues, nTG)
 	fmt.Println(pctRace)	
 	
-	
-	
-	
-	
-	
 // 	New Report 
 
 	h := titles()
@@ -572,4 +501,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	
+*/
+
 }
