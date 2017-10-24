@@ -6,14 +6,14 @@ import (
 // 	"time"
 // 	"log"
 // 	"os"
-// 	"strconv"
+	"strconv"
 // 	"path/filepath"
 // 	"strings"
 	
 	"github.com/phil0lucas/GoForCP/CPUtils"
 	"github.com/phil0lucas/GoForCP/DM"	
 // 	"github.com/jung-kurt/gofpdf"
-// 	"github.com/montanaflynn/stats"	
+	"github.com/montanaflynn/stats"	
 )
 
 var infile = flag.String("i", "../CreateData/dm3.csv", "Name of input file")
@@ -261,13 +261,12 @@ func WriteReport(outputFile *string, h *headers, f *footers,
 } 
 */
 
-/*
 func nMiss (dm []*DM.Dmrec) map[string]int {
 	m := make(map[string]int)
 // 	total := 0
 	for _, v := range dm {
 		if v.Age != nil {
-			m[v.Arm]++
+			m[*v.Arm]++
 			m["Overall"]++
 		} else {
 			m["Missing"]++
@@ -275,16 +274,14 @@ func nMiss (dm []*DM.Dmrec) map[string]int {
 	}
 	return m
 }
-*/
 
-/*
 func prepareData(dm []*DM.Dmrec, tg []string) map[string][]float64{
 	m := make(map[string][]float64)
 	for _, s := range tg {
 		var out []float64
 		for _, v := range dm {
 			if v.Age != nil {
-				if s == v.Arm {
+				if s == *v.Arm {
 					out = append(out, float64(*v.Age))
 				} else if s == "Overall" {
 					out = append(out, float64(*v.Age))
@@ -295,9 +292,7 @@ func prepareData(dm []*DM.Dmrec, tg []string) map[string][]float64{
 	}
 	return m
 }
-*/
 
-/*
 func mStat (indata map[string][]float64, stat string, dec int) map[string]string {
 	m := make(map[string]string)
 	for i, v := range indata {
@@ -319,22 +314,21 @@ func mStat (indata map[string][]float64, stat string, dec int) map[string]string
 	}
 	return m
 }
-*/
 
 type Key struct {
     sex string
     arm string
 }
 
-/*
+
 func countSexByTG (dm []*DM.Dmrec) map[Key]int{
 	var r []Key
 	for _, v := range dm {
 // 		fmt.Println(v)
 		var k Key
-		if v.Sex != "" {
-			k.sex = v.Sex
-			k.arm = v.Arm
+		if v.Sex != nil {
+			k.sex = *v.Sex
+			k.arm = *v.Arm
 			r = append(r, k)
 			k.arm = "Overall"
 			r = append(r, k)
@@ -349,7 +343,7 @@ func countSexByTG (dm []*DM.Dmrec) map[Key]int{
 
 	return m
 }
-*/
+
 
 /*
 func pctSexByTG (m map[Key]int, tg map[string]int) map[Key]string{
@@ -449,38 +443,53 @@ func main() {
 // 	Compute number of subjects by treatment group
 	nTG := DM.CountByTG(dm)
 	fmt.Println(nTG)
+	
+// Select treatment groups to display i.e. Placebo, Active, Overall	
 	TGs := selectTGs(nTG)
 	fmt.Println(TGs)
-/*	
+	
 // Create version of dm without the SFs
-	dm2 := removeSF(dm)
-
+	dm2 := DM.RemoveSF(dm)
+	fmt.Printf("%T %v\n", dm2, len(dm2))
+	
 // 	Compute number of non-missing Age values by TG
 	nAge := nMiss(dm2)
+	fmt.Println(nAge)
+	
 		
 //	Prepare the data for passing to the stats functions
 //	Select only the TGs to display
 //	Remove the missing values.
-	rMiss := prepareData(dm2, TGs)	
+	rMiss := prepareData(dm2, TGs)
+	fmt.Println(rMiss)
 	
 	
 // 	Compute stats of age by TG
 	mean := mStat(rMiss, "Mean", 2)
+	fmt.Println(mean)
 	sd := mStat(rMiss, "SD", 2)
-	
+	fmt.Println(sd)
+
+
 //	Concatenate mean and SD values into a display string
 	meansd := make(map[string]string)
 	for k, _ := range mean {
 		meansd[k] = mean[k] + " (" + sd[k] + ")"
 	}
+	fmt.Println(meansd)
+	
 	median := mStat(rMiss, "Median", 0)
+	fmt.Println(median)
 	min := mStat(rMiss, "Min", 0)
+	fmt.Println(min)
 	max := mStat(rMiss, "Max", 0)
-		
+	fmt.Println(max)
+
+
 //  N and % of subjects by gender and TG
 	keyValues := countSexByTG(dm2)
-// 	fmt.Println(keyValues)
-	
+	fmt.Println(keyValues)
+/*
 	pctMap := pctSexByTG(keyValues, nTG)
 // 	fmt.Println(pctMap)
 	
