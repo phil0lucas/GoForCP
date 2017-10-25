@@ -1,0 +1,10 @@
+Check for consistency
+
+Run go fmt on everything
+
+Test routines
+
+Examine outputs for consistency / sense / presentation level etc.
+
+Comment well and consistently
+

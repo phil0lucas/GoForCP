@@ -12,7 +12,7 @@ import (
 	
 	"github.com/phil0lucas/GoForCP/CPUtils"
 	"github.com/phil0lucas/GoForCP/DM"	
-// 	"github.com/jung-kurt/gofpdf"
+	"github.com/jung-kurt/gofpdf"
 	"github.com/montanaflynn/stats"	
 )
 
@@ -55,11 +55,11 @@ func titles() *headers{
 
 func footnotes(screened string, failures string) *footers{
 	f2 := "Of the original " + screened + " screened subjects, " + 
-		failures + " were excluded at Screening and are not counted"
+		failures + " were excluded at Screening and are not counted."
 	f := &footers{
-		foot1Left	:	"A long explanatory text",
+		foot1Left	:	"Created with Go 1.8 for linux/amd64.",
 		foot2Left	:	f2,
-		foot3Left	:	"All measurements were taken at the screening visit",
+		foot3Left	:	"All measurements were taken at the screening visit.",
 		foot4Left	:	"Page %d of {nb}",
 		foot4Right	:	"Run: " + CPUtils.TimeStamp(),
 		foot4Centre	:	CPUtils.GetCurrentProgram(),
@@ -79,7 +79,7 @@ func selectTGs(m map[string]int) []string {
 	return s
 }
 
-/*
+
 func WriteReport(outputFile *string, h *headers, f *footers, 
 				 nTG map[string]int, nAge map[string]int, 
 				 meansd map[string]string,
@@ -259,7 +259,6 @@ func WriteReport(outputFile *string, h *headers, f *footers,
 	fmt.Println(err)
 	return err
 } 
-*/
 
 func nMiss (dm []*DM.Dmrec) map[string]int {
 	m := make(map[string]int)
@@ -344,8 +343,6 @@ func countSexByTG (dm []*DM.Dmrec) map[Key]int{
 	return m
 }
 
-
-/*
 func pctSexByTG (m map[Key]int, tg map[string]int) map[Key]string{
 	outmap := make(map[Key]string)
 	for k, v := range m {
@@ -364,14 +361,12 @@ func pctSexByTG (m map[Key]int, tg map[string]int) map[Key]string{
 	}
 	return outmap
 }
-*/
 
-/*
 //	Determine the unique values of the non-TG key
 func uniqueValues (m map[Key]string) []string {
 	var uValues []string
 	for k, _ := range m {
-		if !stringInSlice (k.sex , uValues) {
+		if !CPUtils.StringInSlice (k.sex , uValues) {
 			uValues = append(uValues, k.sex)
 		}
 	}
@@ -388,9 +383,9 @@ func countRaceByTG (dm []*DM.Dmrec) map[KeyR]int{
 	for _, v := range dm {
 // 		fmt.Println(v)
 		var k KeyR
-		if v.Race != "" {
-			k.race = v.Race
-			k.arm = v.Arm
+		if v.Race != nil {
+			k.race = *v.Race
+			k.arm = *v.Arm
 			r = append(r, k)
 			k.arm = "Overall"
 			r = append(r, k)
@@ -403,14 +398,12 @@ func countRaceByTG (dm []*DM.Dmrec) map[KeyR]int{
 	}
 	return m
 }
-*/
 
 //	Determine the unique values of the non-TG key
-/*
 func uniqueValuesR (m map[KeyR]string) []string {
 	var uValues []string
 	for k, _ := range m {
-		if !stringInSlice (k.race , uValues) {
+		if !CPUtils.StringInSlice (k.race , uValues) {
 			uValues = append(uValues, k.race)
 		}
 	}
@@ -432,8 +425,6 @@ func pctRaceByTG (m map[KeyR]int, tg map[string]int) map[KeyR]string{
 	}
 	return outmap
 }
-*/
-
 
 func main() {
 	// Read the file and dump into the slice of structs
@@ -456,20 +447,17 @@ func main() {
 	nAge := nMiss(dm2)
 	fmt.Println(nAge)
 	
-		
 //	Prepare the data for passing to the stats functions
 //	Select only the TGs to display
 //	Remove the missing values.
 	rMiss := prepareData(dm2, TGs)
 	fmt.Println(rMiss)
 	
-	
 // 	Compute stats of age by TG
 	mean := mStat(rMiss, "Mean", 2)
 	fmt.Println(mean)
 	sd := mStat(rMiss, "SD", 2)
 	fmt.Println(sd)
-
 
 //	Concatenate mean and SD values into a display string
 	meansd := make(map[string]string)
@@ -489,19 +477,18 @@ func main() {
 //  N and % of subjects by gender and TG
 	keyValues := countSexByTG(dm2)
 	fmt.Println(keyValues)
-/*
+
 	pctMap := pctSexByTG(keyValues, nTG)
-// 	fmt.Println(pctMap)
+	fmt.Println(pctMap)
 	
 	raceValues := countRaceByTG(dm2)
-// 	fmt.Println(raceValues)	
+	fmt.Println(raceValues)	
 	
 //  N and % of subjects by race and TG
 	pctRace := pctRaceByTG(raceValues, nTG)
 	fmt.Println(pctRace)	
 	
-// 	New Report 
-
+// 	Report 
 	h := titles()
 	f_scr := strconv.Itoa(nTG["Screened"])
 	f_sf := strconv.Itoa(nTG["SF"])
@@ -510,7 +497,4 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	
-*/
-
 }

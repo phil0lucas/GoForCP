@@ -50,11 +50,11 @@ func titles() *headers{
 
 func footnotes(screened string, failures string) *footers{
 	f2 := "Of the original " + screened + " screened subjects, " + 
-		failures + " were excluded at Screening and are not counted"
+		failures + " were excluded at Screening and are not counted."
 	f := &footers{
-		foot1Left	:	"A long explanatory text",
+		foot1Left	:	"Created with Go 1.8 for linux/amd64.",
 		foot2Left	:	f2,
-		foot3Left	:	"All measurements were taken at the screening visit",
+		foot3Left	:	"All measurements were taken at the screening visit.",
 		foot4Left	:	"Page %d of {nb}",
 		foot4Right	:	"Run: " + CPUtils.TimeStamp(),
 		foot4Centre	:	CPUtils.GetCurrentProgram(),

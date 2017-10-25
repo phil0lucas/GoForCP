@@ -232,3 +232,63 @@ func WriteSC(f *string) {
 // 	// Write to disk
 	w.Flush()
 }
+
+func ReadSC(infile *string) []*Subject {
+	// open the file and pass it to a Scanner object
+	file, err := os.Open(*infile)
+	if err != nil {
+		panic(fmt.Sprintf("error opening %s: %v", *infile, err))
+	}
+	defer file.Close()
+	
+	// Pass the opened file to a scanner
+	scanner := bufio.NewScanner(file)
+
+	var subj []*Subject
+	for i := 0; scanner.Scan(); i++ {
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintln(os.Stderr, "error reading from file:", err)
+			os.Exit(3)
+		}
+		str := scanner.Text()
+		studyid := strings.Split(str, ",")[0]
+		subjid := strings.Split(str, ",")[1]
+		siteid := strings.Split(str, ",")[2]
+		usubjid := strings.Split(str, ",")[3]
+		rectype, _ := strconv.Atoi(strings.Split(str, ",")[4])
+		
+		// Screening date
+		dmdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[5])
+		
+		// Last visit number
+		endv, _ := strconv.Atoi(strings.Split(str, ",")[6])
+		
+		// First date of dosing for randomized subjects.
+		// For screening failures this will be a nil pointer.
+		rfstdtc := CPUtils.Str2DateP(strings.Split(str, ",")[7])
+		
+		//	Last day of dosing.
+		//	This will also be missing if the subject is a screening failure
+		rfendtc := CPUtils.Str2DateP(strings.Split(str, ",")[8])
+		
+		armcd := CPUtils.Str2IntP(strings.Split(str, ",")[9])
+		arm := CPUtils.Str2StrP(strings.Split(str, ",")[10])		
+		
+		
+		subj = append(subj, &Subject{
+			Studyid: studyid,
+			Subjid: subjid,
+			Siteid: siteid,
+			Usubjid: usubjid,
+			Rectype: rectype,
+			Dmdtc: dmdtc,
+			Endv: endv,
+			Rfstdtc: rfstdtc,
+			Rfendtc: rfendtc,
+
+			Armcd: armcd,
+			Arm: arm,
+		})
+	}
+	return subj
+}

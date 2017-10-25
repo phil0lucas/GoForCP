@@ -316,3 +316,38 @@ func WriteVS(infile, outfile *string) {
 	// Write to disk
 	w.Flush()	
 }
+
+func ReadVS(infile *string) []*Vsrec {
+	// open the file and pass it to a Scanner object
+	file, err := os.Open(*infile)
+	if err != nil {
+		panic(fmt.Sprintf("error opening %s: %v", *infile, err))
+	}
+	defer file.Close()
+	
+	// Pass the opened file to a scanner
+	scanner := bufio.NewScanner(file)
+
+	var vsx []*Vsrec
+	for i := 0; scanner.Scan(); i++ {
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintln(os.Stderr, "error reading from file:", err)
+			os.Exit(3)
+		}
+		str := scanner.Text()
+		studyid := strings.Split(str, ",")[0]
+		domain := strings.Split(str, ",")[1]
+		subjid := strings.Split(str, ",")[2]
+		siteid := strings.Split(str, ",")[3]
+		usubjid := strings.Split(str, ",")[4]
+		
+		vsx = append(vsx, &Vsrec{
+			Studyid: studyid,
+			Domain: domain,
+			Subjid: subjid,
+			Siteid: siteid,
+			Usubjid: usubjid,
+		})
+	}
+	return vsx		
+}
