@@ -8,3 +8,4 @@ Examine outputs for consistency / sense / presentation level etc.
 
 Comment well and consistently
 
+REview code. Any hard-codes to remove? Any redundant code to remove. Anything repeated that can be parameterized or removed by using interfaces?

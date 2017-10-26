@@ -18,15 +18,34 @@ var infile1 = flag.String("s", "../CreateData/sc3.csv", "Name of SC input file")
 var infile2 = flag.String("v", "../CreateData/vs3.csv", "Name of VS input file")
 var outfile = flag.String("o", "plot01.png", "Name of output file")
 
+func UsubjidByTG(sc []*SC.Subject) map[string][]string {
+	m := make(map[string][]string)
+	for k, v := range sc {
+		if *v.arm != "" {
+			
+		// This evaluates to true if the key is in the map
+			if val, ok := m[*v.arm]; ok {
+				// Add Usubjid to the slice keyed on the Arm value
+			} else {
+				// Add both key and first element into the slice
+			}
+			
+		}
+	}
+}
+
+
 func main() {
-	// Read the file and dump into the slice of structs
+	// Read the 'SC' data and dump into the slice of structs
 	sc := SC.ReadSC(infile1)
 	fmt.Printf("%T\n", sc)
 	
+	// Read the VS data
 	vs := VS.ReadVS(infile2)
-	fmt.Printf("%T\n", vs)		
+	fmt.Printf("%T\n", vs)
 	
-	
+	// Create a map of key TG and value slice of USUBJIDs
+	m := UsubjidByTG(sc)
 	
 	
 	
