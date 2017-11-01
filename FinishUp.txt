@@ -1,11 +1,17 @@
+Set all code to R/O and checkpoint in Git
+
 Check for consistency
 
 Run go fmt on everything
 
-Test routines
+Test routines : e.g. check the reads / writes mirror each other.
 
 Examine outputs for consistency / sense / presentation level etc.
 
 Comment well and consistently
 
 REview code. Any hard-codes to remove? Any redundant code to remove. Anything repeated that can be parameterized or removed by using interfaces?
+
+Want to same thing with Sex and Race? Write a func that writes a func for each case!
+
+Try to incorporate an example of an interface.

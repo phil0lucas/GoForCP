@@ -340,6 +340,18 @@ func ReadVS(infile *string) []*Vsrec {
 		subjid := strings.Split(str, ",")[2]
 		siteid := strings.Split(str, ",")[3]
 		usubjid := strings.Split(str, ",")[4]
+		vsseq, _ := strconv.Atoi(strings.Split(str, ",")[5])
+		vnum, _ := strconv.Atoi(strings.Split(str, ",")[6])
+		vstestcd := strings.Split(str, ",")[7]
+		vstest := strings.Split(str, ",")[8]
+		vsorres := CPUtils.Str2FloatP(strings.Split(str, ",")[9])
+		vsstresn := CPUtils.Str2FloatP(strings.Split(str, ",")[10])
+		vsstresc := CPUtils.Str2StrP(strings.Split(str, ",")[11])
+		vsorresu := CPUtils.Str2StrP(strings.Split(str, ",")[12])
+		vsstresu := CPUtils.Str2StrP(strings.Split(str, ",")[13])		
+		vsblfl, _ := strconv.ParseBool(strings.Split(str, ",")[14])
+		vsdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[15])
+		vsdy, _ := strconv.Atoi(strings.Split(str, ",")[16])
 		
 		vsx = append(vsx, &Vsrec{
 			Studyid: studyid,
@@ -347,6 +359,18 @@ func ReadVS(infile *string) []*Vsrec {
 			Subjid: subjid,
 			Siteid: siteid,
 			Usubjid: usubjid,
+			Vsseq: vsseq,
+			Visitnum: vnum,
+			Vstestcd: vstestcd,
+			Vstest: vstest,
+			Vsorres: vsorres,
+			Vsstresn: vsstresn,
+			Vsstresc: vsstresc,
+			Vsorresu: vsorresu,
+			Vsstresu: vsstresu,
+			Vsblfl: vsblfl,
+			Vsdtc: vsdtc,
+			Vsdy: vsdy,
 		})
 	}
 	return vsx		
