@@ -1,23 +1,78 @@
 package main
 
 import (
-// 	"math/rand"
 	"flag"
 	"fmt"
+	"strconv"
 	
-// 	"gonum.org/v1/plot"
+	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
-// 	"gonum.org/v1/plot/plotutil"
-// 	"gonum.org/v1/plot/vg"
+	"gonum.org/v1/plot/plotutil"
+	"gonum.org/v1/plot/vg"
 	
 	"github.com/phil0lucas/GoForCP/SC"
 	"github.com/phil0lucas/GoForCP/VS"
 	"github.com/montanaflynn/stats"	
+	"github.com/jung-kurt/gofpdf"
+	"github.com/phil0lucas/GoForCP/CPUtils"
+	
 )
 
 var infile1 = flag.String("s", "../CreateData/sc3.csv", "Name of SC input file")
 var infile2 = flag.String("v", "../CreateData/vs3.csv", "Name of VS input file")
-var outfile = flag.String("o", "plot01.png", "Name of output file")
+var outfile = flag.String("o", "plot01.pdf", "Name of output file")
+var imgX = 207.0		// Image X size in mm
+var imgY = 138.0		// Image Y size in mm
+
+type headers struct {
+	head1Left	string
+	head1Right	string
+	head2Left	string
+	head2Right	string
+	head3Left	string
+	head4Centre	string
+	head5Centre	string
+	head6Centre	string	
+}
+
+type footers struct {
+	foot1Left	string
+	foot2Left	string
+	foot3Left	string
+	foot4Left	string
+	foot4Centre	string
+	foot4Right	string
+}
+
+func titles() *headers{
+	h := &headers{
+		head1Left	: 	"Acme Corp",
+		head1Right	: 	"CONFIDENTIAL",
+		head2Left	: 	"XYZ123 / Anti-Hypertensive",
+		head2Right	:	"Draft",
+		head3Left	:	"Protocol XYZ123",
+		head4Centre	:	"Study XYZ123",
+		head5Centre	:	"Blood Pressures by Visit and Treatment Arm",
+		head6Centre	:	"All Randomised Subjects",
+	}
+	return h
+}
+
+// func footnotes(screened string, failures string) *footers{
+func footnotes() *footers{
+	
+// 	f2 := "Of the original " + screened + " screened subjects, " + 
+// 		failures + " were excluded at Screening and are not counted."
+	f := &footers{
+		foot1Left	:	"Created with Go 1.8 for linux/amd64.",
+		foot2Left	:	"",
+		foot3Left	:	"Measurements were taken at 14 day intervals.",
+		foot4Left	:	"Page %d of {nb}",
+		foot4Right	:	"Run: " + CPUtils.TimeStamp(),
+		foot4Centre	:	CPUtils.GetCurrentProgram(),
+	}
+	return f
+}
 
 // One object per Arm-Vstestcd-Visitnum
 type perAVV struct {
@@ -37,12 +92,17 @@ func sMerge (vs []*VS.Vsrec, subjArm map[string]string) []perAVV {
 		p.Arm = subjArm[v.Usubjid]
 		p.Vstestcd = v.Vstestcd
 		p.Visitnum = v.Visitnum
+		
+		// else p.Vsstresn will take its default zero value i.e. 0
 		if v.Vsstresn != nil {
 			p.Vsstresn = *v.Vsstresn
 		}
-		if p.Arm != "" && p.Vstestcd != "" && p.Visitnum != 0 && p.Vsstresn != 0 {
+				
+		if p.Arm != "" && p.Vstestcd != "" && p.Vstestcd != "HR" && p.Vsstresn != 0 {
+// 			fmt.Printf("Visit Number: %v Result Value: %v\n", p.Visitnum, p.Vsstresn)
 			vsp = append(vsp, p)				
 		}
+		
 	}
 	return vsp
 }
@@ -94,59 +154,153 @@ type Line struct {
 	line		string		
 }
 
-type Point struct {
-	line		Line
-	ppoint		plotter.XYs
-}
-
-func createPoints (sr []results) []Point {
-	var pp []Point
+func createPoints (sr []results) map[Line]plotter.XYs {
+	m := make(map[Line]plotter.XYs)
 	for _, v := range sr {
-		var p Point
-		p.line.graph.Arm = v.key.Arm
-		p.line.line = v.key.Vstestcd
-		fmt.Println(p.line.graph.Arm)
-		fmt.Println(p.line.line)
+		var p Line
+		p.graph.Arm = v.key.Arm
+		p.line = v.key.Vstestcd
+		m[p] = nil
 	}
-	return pp
-}
-
-
-/*
-type plotKeys struct {
-	Arm			string
-	Vstestcd	string
-}
-
-type plotValues struct {
-	plotid		plotKeys
-	yaxis		float64
-	xaxis		int
-}
-
-func plotPoints (m map[Key][]float64) []plotValues {
-	var sp []plotValues
-	for k, v := range m {
-		var p plotValues
-		p.plotid.Arm = k.Arm
-		p.plotid.Vstestcd = k.Vstestcd
-		p.xaxis = k.Visitnum
-		p.yaxis, _ = stats.Mean(v)
-		fmt.Println (p)
-		sp = append(sp, p)
+	
+	for k, _ := range m {
+		m[k] = make(plotter.XYs, 15)
 	}
-	return sp
+	
+	for _, v := range sr {
+		var p Line
+		p.graph.Arm = v.key.Arm
+		p.line = v.key.Vstestcd
+		for k, _ := range m {
+			if k == p {
+				index := v.key.Visitnum
+// 				fmt.Println(index)
+				x := float64(v.key.Visitnum)
+// 				fmt.Println(x)
+				y := v.mean
+// 				fmt.Println(y)
+				m[k][index].X = x
+				m[k][index].Y = y
+			}
+		}
+	}
+	return m
 }
 
-// randomPoints returns some random x, y points.
-func pPoints(q []plotValues) map[plotKeys]plotter.XYs {
-	pts := make(map[plotKeys]plotter.XYs)
-	for i := range q {
-		fmt.Println(i)
+func plotBP (pp map[Line]plotter.XYs, group string, n int) string {
+	p, err := plot.New()
+	if err != nil {
+		panic(err)
 	}
-	return pts
+
+	p.Title.Text = "Treatment Group: " + group
+	p.Y.Min = 60.0
+	p.Y.Max = 140.0
+	p.X.Label.Text = "Visit Number"
+	p.Y.Label.Text = "Blood Pressure (mmHg)"
+	p.X.Tick.Marker = plot.ConstantTicks([]plot.Tick{
+		{0, "0"},
+		{1, "1"},
+		{2, "2"},
+		{3, "3"},
+		{4, "4"},
+		{5, "5"},
+		{6, "6"},
+		{7, "7"},
+		{8, "8"},
+		{9, "9"},
+		{10, "10"},
+		{11, "11"},
+		{12, "12"},
+		{13, "13"},
+		{14, "14"},
+	})
+	
+	p.Y.Tick.Marker = plot.ConstantTicks([]plot.Tick{
+		{60, "60"},
+		{70, "70"},
+		{80, "80"},
+		{90, "90"},
+		{100, "100"},
+		{110, "110"},
+		{120, "120"},
+		{130, "130"},
+		{140, "140"},
+	})	
+
+	err = plotutil.AddLinePoints(p,
+		"Systolic BP", pp[Line{Graph{group}, "SBP"}],
+		"Diastolic BP", pp[Line{Graph{group}, "DBP"}])
+	if err != nil {
+		panic(err)
+	}
+
+	t_out := "temp" + strconv.Itoa(n) + ".png"
+	// Save the plot to a PNG file.
+	if err := p.Save(vg.Length(imgX)*vg.Millimeter, vg.Length(imgY)*vg.Millimeter, t_out); err != nil {
+		panic(err)
+	}	
+	return t_out
 }
-*/
+
+func WriteReport(outputFile *string, h *headers, f *footers, g1 string, g2 string) error {
+	pdf := gofpdf.New("L", "mm", "A4", "")
+	pdf.SetHeaderFunc(func() {
+		pdf.SetFont("Courier", "", 10)
+		pdf.CellFormat(0, 10, (*h).head1Left, "0", 0, "L", false, 0, "")
+		pdf.CellFormat(0, 10, (*h).head1Right, "0", 0, "R", false, 0, "")
+		pdf.Ln(4)
+		pdf.CellFormat(0, 10, (*h).head2Left, "0", 0, "L", false, 0, "")
+		pdf.CellFormat(0, 10, (*h).head2Right, "0", 0, "R", false, 0, "")
+		pdf.Ln(4)
+		pdf.CellFormat(0, 10, (*h).head3Left, "0", 0, "L", false, 0, "")
+		pdf.Ln(4)
+		pdf.CellFormat(0, 10, (*h).head4Centre, "0", 0, "C", false, 0, "")
+		pdf.Ln(4)
+		pdf.CellFormat(0, 10, (*h).head5Centre, "0", 0, "C", false, 0, "")
+		pdf.Ln(4)
+		pdf.CellFormat(0, 10, (*h).head6Centre, "0", 0, "C", false, 0, "")
+		pdf.Ln(10)		
+	})
+	
+	pdf.SetFooterFunc(func() {
+		pdf.SetY(-30)
+		pdf.SetFont("Courier", "", 10)
+		pdf.CellFormat(0, 10, (*f).foot1Left, "0", 0, "L", false, 0, "")
+		pdf.Ln(4)
+		pdf.CellFormat(0, 10, (*f).foot2Left, "0", 0, "L", false, 0, "")
+		pdf.Ln(4)
+		pdf.CellFormat(0, 10, (*f).foot3Left, "0", 0, "L", false, 0, "")
+		pdf.Ln(4)		
+		pdf.CellFormat(0, 10, fmt.Sprintf((*f).foot4Left, pdf.PageNo()), "", 0, "L", false, 0, "")
+		pdf.SetX(40)
+		pdf.CellFormat(0, 10, (*f).foot4Centre, "", 0, "L", false, 0, "")
+		pdf.CellFormat(0, 10, (*f).foot4Right, "", 0, "R", false, 0, "")
+	})
+	pdf.AliasNbPages("")
+	
+// 	AddPage() executes the generated Header and Footer functions
+	y := pdf.GetY()
+	fmt.Printf("Before - GetY function gives: %v", y)	
+	pdf.AddPage()
+	y = pdf.GetY()
+	fmt.Printf("After - GetY function gives: %v", y)
+	pdf.Image(g1, 30, 40, imgX, imgY, false, "", 0, "")
+	pdf.AddPage()
+	pdf.Image(g2, 30, 40, imgX, imgY, false, "", 0, "")
+	
+//	Underline	
+// 	pdf.SetY(-36)
+// 	colUnderSlice := []string{" ", " ", " ", " ", " "}
+// 	for i, str := range colUnderSlice {
+// 		pdf.CellFormat(colWidthSlice[i], 8, str, "B", 0, colJustSlice[i], false, 0, "")
+// 	}	
+		
+// 	Output
+	err := pdf.OutputFileAndClose(*outputFile)
+	fmt.Println(err)
+	return err
+} 
 
 func main() {
 	// Read the 'SC' data and dump into the slice of structs
@@ -172,6 +326,7 @@ func main() {
 	// Point objects have a compound key Arm-Vstestcd-Visitnum and Vsstresn values to
 	// summarize into plottable points
 	vsp := sMerge(vs, subjArm)
+	fmt.Printf("%T\n", vsp)
 // 	for _, v := range vsp {
 // 		fmt.Println(v.Arm, v.Vstestcd, v.Visitnum, v.Vsstresn)
 // 	}
@@ -184,44 +339,34 @@ func main() {
 // 	for k, v := range pMap {
 // 		fmt.Printf("Arm %s, VStestCD %s, Visitnum %v, Value %v", k.Arm, k.Vstestcd, k.Visitnum, v)
 // 	}
-	
+
 // Calculate the mean of the Vsstresn for each Arm-Vstestcd-Visitnum
 	meanVals := calcMean(pMap)
-// 	fmt.Println(meanVals)
+ 	fmt.Println(len(meanVals))
 
 
 
 	pp := createPoints(meanVals)
 	fmt.Println(pp)
 	
+	for k, _ := range pp {
+		fmt.Println(k)
+	}
 	
-/*	
+	g1 := plotBP(pp, "Placebo",1)
+	fmt.Println(g1)
+	g2 := plotBP(pp, "Active",2)
+	fmt.Println(g2)
+	
+// 	Report 
+	h := titles()
+	f := footnotes()
 
-	p, err := plot.New()
-
+	err := WriteReport(outfile, h, f, g1, g2)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 
-	p.Title.Text = "Plotutil example"
-	p.X.Label.Text = "X"
-	p.Y.Label.Text = "Y"
-
-	err = plotutil.AddLinePoints(p,
-		"First", pPoints(pp),
-		"Third", pPoints(pp))
-	if err != nil {
-		panic(err)
-	}
-
-	// Save the plot to a PNG file.
-	if err := p.Save(4*vg.Inch, 4*vg.Inch, *outfile); err != nil {
-		panic(err)
-	}	
-	
-	
-*/	
-	
 }
 
 
