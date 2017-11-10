@@ -29,15 +29,15 @@ package SC
 
 import (
 	"bufio"
-// 	"flag"
+	// 	"flag"
+	"fmt"
 	"log"
 	"math/rand"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-	"fmt"
-	
+
 	"github.com/phil0lucas/GoForCP/CPUtils"
 )
 
@@ -53,8 +53,8 @@ type Subject struct {
 	Endv    int
 	Rfstdtc *time.Time
 	Rfendtc *time.Time
-	Armcd	*int
-	Arm		*string
+	Armcd   *int
+	Arm     *string
 }
 
 // Constants can only be numbers, strings or boolean
@@ -70,13 +70,8 @@ var baseDate = time.Date(2010, time.January, 1, 0, 0, 0, 0, time.UTC)
 // The SITEID is chosen from one of these 5 values
 var siteids = []string{"1", "2", "3", "4", "5"}
 
-// The program will be run with a flag to specify the output file
-// var outfile = flag.String("o", "sc2.csv", "Name of output file")
-
 // To allow a random choice of arm
-var arm = map[int]string{0:"Placebo", 1:"Active"}
-
-
+var arm = map[int]string{0: "Placebo", 1: "Active"}
 
 // Use this to flag subjects as
 // - screening failures (~5%)
@@ -119,25 +114,10 @@ func startDate(r int, d time.Time) *time.Time {
 	case 0:
 		return nil
 	default:
-        d2 := d.AddDate(0, 0, 14)
+		d2 := d.AddDate(0, 0, 14)
 		return &d2
 	}
 }
-
-/*
-func (s *RefStartDate) dateFmt() string {
-    // The receiver s is a pointer to a RefStartDate
-    // If the value of the pointer is not nil then
-    // it points to a variable
-    if s != nil {
-        d := time.Time(*s)
-        return d.Format("2006-01-02")
-    } else {
-        return ""
-    }
-}
-*/
-
 
 // Construct an end date dependent upon the last visit
 func endDate(r int, e int, d time.Time) *time.Time {
@@ -145,28 +125,30 @@ func endDate(r int, e int, d time.Time) *time.Time {
 	case 0:
 		return nil
 	case 1:
-        d2 := d.AddDate(0, 0, (e * 14))
+		d2 := d.AddDate(0, 0, (e * 14))
 		return &d2
 	default:
-        d2 := d.AddDate(0, 0, (lastVisit * 14))
+		d2 := d.AddDate(0, 0, (lastVisit * 14))
 		return &d2
 	}
 }
 
+//	Randomly select the treatment arm and its code
 func getArm(r int) (*int, *string) {
 	rand.Seed(time.Now().UTC().UnixNano())
-    if r != 0 {
-        armcd := rand.Intn(len(arm))
-        arm := arm[armcd]
-        return &armcd, &arm
-    } else {
-        return nil, nil
-    }
+	if r != 0 {
+		armcd := rand.Intn(len(arm))
+		arm := arm[armcd]
+		return &armcd, &arm
+	} else {
+		return nil, nil
+	}
 }
 
+//	Create a CSV file of a row per subject
 func WriteSC(f *string) {
 	// Create slice of pointers to Subject types
-    sSubj := make([]*Subject, nSubj)
+	sSubj := make([]*Subject, nSubj)
 
 	for ii := 0; ii < nSubj; ii++ {
 		subjid := CPUtils.LeftPad2Len(strconv.Itoa(ii+1), "0", 6)
@@ -182,57 +164,56 @@ func WriteSC(f *string) {
 
 		// Add the address of the struct into the slice
 		sSubj[ii] = &Subject{
-			studyid,		
+			studyid,
 			subjid,
 			siteid,
 			usubjid,
 			rectype,
 			dmdtc,
-            endv,
+			endv,
 			rfstdtc,
 			rfendtc,
 			armcd,
 			arm,
 		}
-		fmt.Println(*sSubj[ii])
 	}
 
-
-// 	// Output to external file via strings	
+	// Output to external file via strings
 	fo, err := os.Create(*f)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer fo.Close()
-// 
-// 	// Create a buffered writer from the file
+
+	//  Create a buffered writer to the file
 	w := bufio.NewWriter(fo)
-// 
-// 	// For each subject-test-visit
+
+	// For each subject write a row
 	for ii := 0; ii < nSubj; ii++ {
 		bytesWritten, err := w.WriteString(
 			sSubj[ii].Studyid + "," +
-			sSubj[ii].Subjid + "," +
-			sSubj[ii].Siteid + "," +
-			sSubj[ii].Usubjid + "," +
-			strconv.Itoa(sSubj[ii].Rectype) + "," +
-			sSubj[ii].Dmdtc.Format("2006-01-02") + "," +
-			strconv.Itoa(sSubj[ii].Endv) + "," +
-			CPUtils.DateP2Str(sSubj[ii].Rfstdtc) + "," +
-			CPUtils.DateP2Str(sSubj[ii].Rfendtc) + "," +
-			CPUtils.IntP2Str(sSubj[ii].Armcd) + "," +
-			CPUtils.StrP2Str(sSubj[ii].Arm) +
-			"\n")
+				sSubj[ii].Subjid + "," +
+				sSubj[ii].Siteid + "," +
+				sSubj[ii].Usubjid + "," +
+				strconv.Itoa(sSubj[ii].Rectype) + "," +
+				sSubj[ii].Dmdtc.Format("2006-01-02") + "," +
+				strconv.Itoa(sSubj[ii].Endv) + "," +
+				CPUtils.DateP2Str(sSubj[ii].Rfstdtc) + "," +
+				CPUtils.DateP2Str(sSubj[ii].Rfendtc) + "," +
+				CPUtils.IntP2Str(sSubj[ii].Armcd) + "," +
+				CPUtils.StrP2Str(sSubj[ii].Arm) +
+				"\n")
 
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Printf("Bytes written: %d\n", bytesWritten)
 	}
-// 	// Write to disk
+	// 	Write to disk
 	w.Flush()
 }
 
+//	Read the CSV into the same struct as used to write it
 func ReadSC(infile *string) []*Subject {
 	// open the file and pass it to a Scanner object
 	file, err := os.Open(*infile)
@@ -240,7 +221,7 @@ func ReadSC(infile *string) []*Subject {
 		panic(fmt.Sprintf("error opening %s: %v", *infile, err))
 	}
 	defer file.Close()
-	
+
 	// Pass the opened file to a scanner
 	scanner := bufio.NewScanner(file)
 
@@ -251,43 +232,45 @@ func ReadSC(infile *string) []*Subject {
 			os.Exit(3)
 		}
 		str := scanner.Text()
+
+		// Split up each row from the CSV
 		studyid := strings.Split(str, ",")[0]
 		subjid := strings.Split(str, ",")[1]
 		siteid := strings.Split(str, ",")[2]
 		usubjid := strings.Split(str, ",")[3]
 		rectype, _ := strconv.Atoi(strings.Split(str, ",")[4])
-		
+
 		// Screening date
 		dmdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[5])
-		
+
 		// Last visit number
 		endv, _ := strconv.Atoi(strings.Split(str, ",")[6])
-		
+
 		// First date of dosing for randomized subjects.
 		// For screening failures this will be a nil pointer.
 		rfstdtc := CPUtils.Str2DateP(strings.Split(str, ",")[7])
-		
+
 		//	Last day of dosing.
 		//	This will also be missing if the subject is a screening failure
 		rfendtc := CPUtils.Str2DateP(strings.Split(str, ",")[8])
-		
+
+		// These may be missing, so pointer types have been used.
 		armcd := CPUtils.Str2IntP(strings.Split(str, ",")[9])
-		arm := CPUtils.Str2StrP(strings.Split(str, ",")[10])		
-		
-		
+		arm := CPUtils.Str2StrP(strings.Split(str, ",")[10])
+
+		// The output object is a slice of pointers to the Subject struct.
 		subj = append(subj, &Subject{
 			Studyid: studyid,
-			Subjid: subjid,
-			Siteid: siteid,
+			Subjid:  subjid,
+			Siteid:  siteid,
 			Usubjid: usubjid,
 			Rectype: rectype,
-			Dmdtc: dmdtc,
-			Endv: endv,
+			Dmdtc:   dmdtc,
+			Endv:    endv,
 			Rfstdtc: rfstdtc,
 			Rfendtc: rfendtc,
-
-			Armcd: armcd,
-			Arm: arm,
+			Armcd:   armcd,
+			Arm:     arm,
 		})
 	}
 	return subj

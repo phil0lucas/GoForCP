@@ -1,3 +1,5 @@
+// This program creates a simple multi-page listing of DM data.
+// Writing to the PDF output file is provided by the gofpdf package.
 package main
 
 import (
@@ -11,9 +13,11 @@ import (
 	"github.com/jung-kurt/gofpdf"	
 )
 
+// Input and output files. These can be changed in the call using the -i and -o flags
 var infile = flag.String("i", "../CreateData/dm3.csv", "Name of input file")
 var outfile = flag.String("o", "listing03.pdf", "Name of output file")
 
+// Header and Footer text is collected together in structs
 type headers struct {
 	head1Left	string
 	head1Right	string
@@ -34,6 +38,7 @@ type footers struct {
 	foot4Right	string
 }
 
+// This function assigns values to the header text struct and returns a pointer
 func titles() *headers{
 	h := &headers{
 		head1Left	: 	"Acme Corp",
@@ -48,6 +53,9 @@ func titles() *headers{
 	return h
 }
 
+// As per titles. Note the text substitutions and use of functions to
+// define the run timestamp and the program name.
+// Note the method of specifying the page number style.
 func footnotes(screened string, failures string) *footers{
 	f2 := "Of the original " + screened + " screened subjects, " + 
 		failures + " were excluded at Screening and are not counted."
@@ -81,9 +89,13 @@ func main() {
 
 // 	Determine the unique treatment group (Arm) values
 	TGlist := DM.UniqueTG(dm2)
-		
+
+// 	Define a new document
 	pdf := gofpdf.New("L", "mm", "A4", "")
 	h := titles()
+	
+// 	This method takes an anonymous function as its argument
+//  It is the AddPage() method that calls the formatted headers and footers.
 	pdf.SetHeaderFunc(func() {
 		pdf.SetFont("Courier", "", 10)
 		pdf.CellFormat(0, 10, (*h).head1Left, "0", 0, "L", false, 0, "")
@@ -102,6 +114,7 @@ func main() {
 		pdf.Ln(10)		
 	})
 	
+// 	Footnotes are treated the same way as headers. Note the PageNo() method. 
 	f_scr := strconv.Itoa(nTG["Screened"])
 	f_sf := strconv.Itoa(nTG["SF"])
 	f := footnotes(f_scr, f_sf)
@@ -119,16 +132,19 @@ func main() {
 		pdf.CellFormat(0, 10, (*f).foot4Centre, "", 0, "L", false, 0, "")
 		pdf.CellFormat(0, 10, (*f).foot4Right, "", 0, "R", false, 0, "")
 	})
+	
+// 	defines an alias for the total number of pages. When blank {nb} is used
 	pdf.AliasNbPages("")	
+	
+// 	Adds a page, sets headers and footers
 	pdf.AddPage()
-// 	For each TG, get a subset of the data based on the Arm value
-
+	
+// 	For each treatment group (TG), get a subset of the data based on the Arm value
 	colHeaderSlice := []string{"SiteID-SubjectID", "Date of Birth", "Age (Years)", "Gender", "Ethnicity"}
 	colWidthSlice := []float64{40, 40, 40, 40, 40}
 	colJustSlice := []string{"L", "L", "L", "L", "L"}
-// 	for i, str := range colHeaderSlice {
-// 		pdf.CellFormat(colWidthSlice[i], 8, str, "TB", 0, colJustSlice[i], false, 0, "")
-// 	}
+	
+// 	Add spacing
 	pdf.Ln(8)	
 	for _, v := range TGlist {
 		subDM := DM.SubsetByArm(dm2, v)

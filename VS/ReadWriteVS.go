@@ -31,8 +31,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	
-	"github.com/phil0lucas/GoForCP/CPUtils"	
+
+	"github.com/phil0lucas/GoForCP/CPUtils"
 )
 
 // This will mirror the metadata above with more natural types.
@@ -58,7 +58,7 @@ type Vsrec struct {
 	Vsdy     int
 }
 
-//	The type vsrecs models a 'data set' as a slice of 
+//	The type vsrecs models a 'data set' as a slice of
 //	pointers to vsrec structs.
 type vsrecs []*Vsrec
 
@@ -70,11 +70,13 @@ const (
 	domain = "VS"
 )
 
+// Return a random integer in the specified range
 func randValue(max, min int) float64 {
 	rand.Seed(time.Now().UTC().UnixNano())
 	return float64(rand.Intn(max-min) + min)
 }
 
+// Generate random baseline values for each test performed
 func genBaseline(tcode string) float64 {
 	switch tcode {
 	// return rand.Intn(max - min) + min
@@ -88,10 +90,12 @@ func genBaseline(tcode string) float64 {
 	return 0.0
 }
 
+// Generate random resukts based on the subjects randomized treatment (Arm),
+// baseline value and how far they are into the trial (visit number)
 func getOrigRes(baseline float64, visitnum int, armcd *int) *float64 {
 	if armcd == nil {
 		return nil
-	} else { 
+	} else {
 		if *armcd == 0 {
 			if visitnum == 0 {
 				return &baseline
@@ -119,6 +123,7 @@ func getOrigRes(baseline float64, visitnum int, armcd *int) *float64 {
 	}
 }
 
+// Blood pressures in mm of Mercury, heart rate in beats per minute
 func getUnits(testcode string) (string, string) {
 	if testcode == "HR" {
 		return "bpm", "bpm"
@@ -129,6 +134,11 @@ func getUnits(testcode string) (string, string) {
 	}
 }
 
+// Len, Swap and Less are required for the Sort Interface. An interface
+// defines a 'contract' i.e. a set of methods a type will possess.
+// In this case it allows the structs to be re-arranged in the slice according
+// the compound key of Usubjid-Vstestcd-Visitnum and thus generate VSSEQ as per SDTM
+// principles.
 func (t vsrecs) Len() int {
 	return len(t)
 }
@@ -154,7 +164,8 @@ func (t vsrecs) Less(i, j int) bool {
 	return t[i].Visitnum < t[j].Visitnum
 }
 
-func tcodes (vstcd []string, vstdesc []string, index int, rtype int) (string, string) {
+// Allocates test codes and their description
+func tcodes(vstcd []string, vstdesc []string, index int, rtype int) (string, string) {
 	if rtype > 0 {
 		return vstcd[index], vstdesc[index]
 	} else {
@@ -162,7 +173,8 @@ func tcodes (vstcd []string, vstdesc []string, index int, rtype int) (string, st
 	}
 }
 
-func flagBline (visit int) bool {
+// Flags the baseline visit.
+func flagBline(visit int) bool {
 	if visit == 1 {
 		return true
 	} else {
@@ -170,6 +182,7 @@ func flagBline (visit int) bool {
 	}
 }
 
+// Writes the generated data to a CSV correctky sorted by Usubjid-Vstestcd-Visitnum
 func WriteVS(infile, outfile *string) {
 	// open the file and pass it to a Scanner object
 	file, err := os.Open(*infile)
@@ -196,19 +209,18 @@ func WriteVS(infile, outfile *string) {
 		subjid := strings.Split(str, ",")[1]
 		siteid := strings.Split(str, ",")[2]
 		rectype, _ := strconv.Atoi(strings.Split(str, ",")[4])
-// 		fmt.Printf("Rectype %v\n", rectype)
 		dmdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[5])
 		endv := strings.Split(str, ",")[6]
 		endvn, _ := strconv.Atoi(endv)
-		
-// 		The ARMCD will be needed to create the data but will 
-// 		not be included in the final data set. Recall this will
-// 		be a pointer to an int
+
+		// 		The ARMCD will be needed to create the data but will
+		// 		not be included in the final data set. Recall this will
+		// 		be a pointer to an int
 		armcd := CPUtils.Str2IntP(strings.Split(str, ",")[9])
-// 		fmt.Printf("Study=%s Subject=%s Subjid=%s Siteid=%s\n", studyid, usubjid, subjid, siteid)
-// 		fmt.Printf("%v %v %v \n", dmdtc, endv, endvn)
-// 		CPUtils.PrintIntP(armcd)
-		
+		// 		fmt.Printf("Study=%s Subject=%s Subjid=%s Siteid=%s\n", studyid, usubjid, subjid, siteid)
+		// 		fmt.Printf("%v %v %v \n", dmdtc, endv, endvn)
+		// 		CPUtils.PrintIntP(armcd)
+
 		// Add in the visits up to the generated end-visit
 		// Subjects with just visit 0 are screening failures.
 		// Subjects with a final visit number < 14 are withdrawers.
@@ -216,22 +228,22 @@ func WriteVS(infile, outfile *string) {
 		// Test codes
 		for j := 0; j < len(testcodes); j++ {
 			vstestcd, vstest := tcodes(testcodes, testnames, j, rectype)
-// 			fmt.Printf("Testcode=%s Test=%s\n", vstestcd, vstest)
-			
+			// 			fmt.Printf("Testcode=%s Test=%s\n", vstestcd, vstest)
+
 			baseline := genBaseline(testcodes[j])
-// 			fmt.Printf("Test code %s value %v\n", testcodes[j], baseline)
+			// 			fmt.Printf("Test code %s value %v\n", testcodes[j], baseline)
 
 			vsorresu, vsstresu := getUnits(vstestcd)
-// 			fmt.Printf("   Test code units %s, %s\n", vsorresu, vsstresu)
+			// 			fmt.Printf("   Test code units %s, %s\n", vsorresu, vsstresu)
 
 			// Visits
 			for k := 0; k <= endvn; k++ {
 				vsblfl := flagBline(k)
-// 				fmt.Println(vsblfl)
+				// 				fmt.Println(vsblfl)
 				// Recall ARMCD is now a pointer to an int.
 				// VSORRES is a pointer to a float64, nil being a missing value
 				vsorres := getOrigRes(baseline, k, armcd)
-// 				CPUtils.PrintFloatP(vsorres)
+				// 				CPUtils.PrintFloatP(vsorres)
 				vsdtc := dmdtc.AddDate(0, 0, (k * 14))
 				vsdy := k * 14
 
@@ -254,27 +266,25 @@ func WriteVS(infile, outfile *string) {
 					Vsdy:     vsdy,
 				})
 
-// 				fmt.Println(vs[i])
 			} // End k loop
-		}	//	End j loop
-	}	// End i loop
-	
+		} //	End j loop
+	} // End i loop
+
 	// Sort the struct of VS 'records'
+	// Note the usage of the Sort interface
 	sort.Sort(vsrecs(vs))
-	// fmt.Println(vs)
 
 	// Define VSSEQ as key as running int within each subject
 	// Need to define a variable external to the loop otherwise
 	// scope will make each value 1
 	var count int
 	for ii := 0; ii < len(vs); ii++ {
-		if ii == 0 || ((vs[ii].Usubjid != vs[ii-1].Usubjid)) {
+		if ii == 0 || (vs[ii].Usubjid != vs[ii-1].Usubjid) {
 			count = 0
 		}
 		count++
 		vs[ii].Vsseq = count
 	}
-// 	fmt.Println(vs)
 
 	// Write to external file.
 	fo, err := os.Create(*outfile)
@@ -289,23 +299,23 @@ func WriteVS(infile, outfile *string) {
 	for ii, _ := range vs {
 		bytesWritten, err := w.WriteString(
 			vs[ii].Studyid + "," +
-			vs[ii].Domain + "," +
-			vs[ii].Subjid + "," +
-			vs[ii].Siteid + "," +
-			vs[ii].Usubjid + "," +
-			strconv.Itoa(vs[ii].Vsseq) + "," +
-			strconv.Itoa(vs[ii].Visitnum) + "," +
-			vs[ii].Vstestcd + "," +
-			vs[ii].Vstest + "," +
-			CPUtils.FloatP2Str(vs[ii].Vsorres, 1) + "," +
-			CPUtils.FloatP2Str(vs[ii].Vsstresn, 1) + "," +
-			CPUtils.StrP2Str(vs[ii].Vsstresc) + "," +
-			CPUtils.StrP2Str(vs[ii].Vsorresu) + "," +
-			CPUtils.StrP2Str(vs[ii].Vsstresu) + "," +
-			strconv.FormatBool(vs[ii].Vsblfl) + "," +
-			vs[ii].Vsdtc.Format("2006-01-02") + "," +
-			strconv.Itoa(vs[ii].Vsdy) +
-			"\n")
+				vs[ii].Domain + "," +
+				vs[ii].Subjid + "," +
+				vs[ii].Siteid + "," +
+				vs[ii].Usubjid + "," +
+				strconv.Itoa(vs[ii].Vsseq) + "," +
+				strconv.Itoa(vs[ii].Visitnum) + "," +
+				vs[ii].Vstestcd + "," +
+				vs[ii].Vstest + "," +
+				CPUtils.FloatP2Str(vs[ii].Vsorres, 1) + "," +
+				CPUtils.FloatP2Str(vs[ii].Vsstresn, 1) + "," +
+				CPUtils.StrP2Str(vs[ii].Vsstresc) + "," +
+				CPUtils.StrP2Str(vs[ii].Vsorresu) + "," +
+				CPUtils.StrP2Str(vs[ii].Vsstresu) + "," +
+				strconv.FormatBool(vs[ii].Vsblfl) + "," +
+				vs[ii].Vsdtc.Format("2006-01-02") + "," +
+				strconv.Itoa(vs[ii].Vsdy) +
+				"\n")
 
 		if err != nil {
 			log.Fatal(err)
@@ -314,9 +324,10 @@ func WriteVS(infile, outfile *string) {
 	}
 
 	// Write to disk
-	w.Flush()	
+	w.Flush()
 }
 
+// This reads the CSV into the same slice of pointers to structs
 func ReadVS(infile *string) []*Vsrec {
 	// open the file and pass it to a Scanner object
 	file, err := os.Open(*infile)
@@ -324,7 +335,7 @@ func ReadVS(infile *string) []*Vsrec {
 		panic(fmt.Sprintf("error opening %s: %v", *infile, err))
 	}
 	defer file.Close()
-	
+
 	// Pass the opened file to a scanner
 	scanner := bufio.NewScanner(file)
 
@@ -348,30 +359,30 @@ func ReadVS(infile *string) []*Vsrec {
 		vsstresn := CPUtils.Str2FloatP(strings.Split(str, ",")[10])
 		vsstresc := CPUtils.Str2StrP(strings.Split(str, ",")[11])
 		vsorresu := CPUtils.Str2StrP(strings.Split(str, ",")[12])
-		vsstresu := CPUtils.Str2StrP(strings.Split(str, ",")[13])		
+		vsstresu := CPUtils.Str2StrP(strings.Split(str, ",")[13])
 		vsblfl, _ := strconv.ParseBool(strings.Split(str, ",")[14])
 		vsdtc, _ := time.Parse("2006-01-02", strings.Split(str, ",")[15])
 		vsdy, _ := strconv.Atoi(strings.Split(str, ",")[16])
-		
+
 		vsx = append(vsx, &Vsrec{
-			Studyid: studyid,
-			Domain: domain,
-			Subjid: subjid,
-			Siteid: siteid,
-			Usubjid: usubjid,
-			Vsseq: vsseq,
+			Studyid:  studyid,
+			Domain:   domain,
+			Subjid:   subjid,
+			Siteid:   siteid,
+			Usubjid:  usubjid,
+			Vsseq:    vsseq,
 			Visitnum: vnum,
 			Vstestcd: vstestcd,
-			Vstest: vstest,
-			Vsorres: vsorres,
+			Vstest:   vstest,
+			Vsorres:  vsorres,
 			Vsstresn: vsstresn,
 			Vsstresc: vsstresc,
 			Vsorresu: vsorresu,
 			Vsstresu: vsstresu,
-			Vsblfl: vsblfl,
-			Vsdtc: vsdtc,
-			Vsdy: vsdy,
+			Vsblfl:   vsblfl,
+			Vsdtc:    vsdtc,
+			Vsdy:     vsdy,
 		})
 	}
-	return vsx		
+	return vsx
 }
