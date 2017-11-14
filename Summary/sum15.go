@@ -3,22 +3,20 @@ package main
 import (
 	"flag"
 	"fmt"
-	// 	"time"
-	// 	"log"
-	// 	"os"
 	"strconv"
-	// 	"path/filepath"
-	// 	"strings"
-
+	"strings"
+	
 	"github.com/jung-kurt/gofpdf"
 	"github.com/montanaflynn/stats"
 	"github.com/phil0lucas/GoForCP/CPUtils"
 	"github.com/phil0lucas/GoForCP/DM"
 )
 
+// Input and output files
 var infile = flag.String("i", "../CreateData/dm3.csv", "Name of input file")
 var outfile = flag.String("o", "summary15.pdf", "Name of output file")
 
+// Define header structure
 type headers struct {
 	head1Left   string
 	head1Right  string
@@ -30,6 +28,7 @@ type headers struct {
 	head6Centre string
 }
 
+// Footer structure
 type footers struct {
 	foot1Left   string
 	foot2Left   string
@@ -39,6 +38,7 @@ type footers struct {
 	foot4Right  string
 }
 
+// Add values to the header struct and create a pointer to them
 func titles() *headers {
 	h := &headers{
 		head1Left:   "Acme Corp",
@@ -53,6 +53,7 @@ func titles() *headers {
 	return h
 }
 
+// Footer as per header with added substituted values
 func footnotes(screened string, failures string) *footers {
 	f2 := "Of the original " + screened + " screened subjects, " +
 		failures + " were excluded at Screening and are not counted."
@@ -67,6 +68,7 @@ func footnotes(screened string, failures string) *footers {
 	return f
 }
 
+// Define a slice of strings being the treatment group column headers i.e. Active, Placebo, Overall
 func selectTGs(m map[string]int) []string {
 	var s []string
 	for k, _ := range m {
@@ -77,6 +79,7 @@ func selectTGs(m map[string]int) []string {
 	return s
 }
 
+// Report
 func WriteReport(outputFile *string, h *headers, f *footers,
 	nTG map[string]int, nAge map[string]int,
 	meansd map[string]string,
@@ -85,6 +88,7 @@ func WriteReport(outputFile *string, h *headers, f *footers,
 	max map[string]string,
 	sexPct map[Key]string,
 	racePct map[KeyR]string) error {
+
 	pdf := gofpdf.New("L", "mm", "A4", "")
 	pdf.SetHeaderFunc(func() {
 		pdf.SetFont("Courier", "", 10)
@@ -199,10 +203,6 @@ func WriteReport(outputFile *string, h *headers, f *footers,
 	var col1text string
 	sexFmt := map[string]string{"F": "Female", "M": "Male"}
 	for _, v := range uV {
-		// 		fmt.Println(v)
-		// 		index, ok := sexPct[Key{v,"Placebo"}]
-		// 		fmt.Println(index)
-		// 		fmt.Println(ok)
 		if iter == 0 {
 			col1text = "Gender"
 		} else {
@@ -220,7 +220,6 @@ func WriteReport(outputFile *string, h *headers, f *footers,
 	}
 
 	//	Race
-
 	pdf.Ln(4)
 	uVr := uniqueValuesR(racePct)
 	fmt.Println(uVr)
@@ -256,9 +255,9 @@ func WriteReport(outputFile *string, h *headers, f *footers,
 	return err
 }
 
+// Count the number of non-missing Age values per treatment group
 func nMiss(dm []*DM.Dmrec) map[string]int {
 	m := make(map[string]int)
-	// 	total := 0
 	for _, v := range dm {
 		if v.Age != nil {
 			m[*v.Arm]++
@@ -270,6 +269,9 @@ func nMiss(dm []*DM.Dmrec) map[string]int {
 	return m
 }
 
+// Here, the input is 'transposed' into a map where the keys are the treatment group values
+// and the values are arrays of non-missing Age values. In this way the stats can easily
+// be calculated for each treatment group
 func prepareData(dm []*DM.Dmrec, tg []string) map[string][]float64 {
 	m := make(map[string][]float64)
 	for _, s := range tg {
@@ -288,6 +290,7 @@ func prepareData(dm []*DM.Dmrec, tg []string) map[string][]float64 {
 	return m
 }
 
+// Calculate stats on each input slice in the map from the function above
 func mStat(indata map[string][]float64, stat string, dec int) map[string]string {
 	m := make(map[string]string)
 	for i, v := range indata {
@@ -305,16 +308,17 @@ func mStat(indata map[string][]float64, stat string, dec int) map[string]string 
 		}
 		c_stat := strconv.FormatFloat(result, 'f', dec, 64)
 		m[i] = c_stat
-		// 		fmt.Println(err)
 	}
 	return m
 }
 
+// Using an object like this as a map key lets it act like a compound key
 type Key struct {
 	sex string
 	arm string
 }
 
+// Count each non-missing value of Sex by Treatment Group (Arm)
 func countSexByTG(dm []*DM.Dmrec) map[Key]int {
 	var r []Key
 	for _, v := range dm {
@@ -338,61 +342,16 @@ func countSexByTG(dm []*DM.Dmrec) map[Key]int {
 	return m
 }
 
-func countByTG(svar string, dm []*DM.Dmrec) map[KeyX]int {
-
-	type KeyX struct {
-		svar string
-		arm string
-	}
-
-
-	
-	var r []KeyX
-	for _, v := range dm {
-		var k KeyX
-		if v.Sex != nil {
-			k.sex = *v.Sex
-			k.arm = *v.Arm
-			r = append(r, k)
-			k.arm = "Overall"
-			r = append(r, k)
-		}
-	}
-
-	// calculate sum:
-	m := make(map[Key]int)
-	for _, v := range r {
-		m[v]++
-	}
-
-	return m
-}
-
-
-
-
-
-
-
-
-
-
-/////////////////////////////////////
-
+// Determine percentage of the N values of the Treatment Group (Arm)
 func pctSexByTG(m map[Key]int, tg map[string]int) map[Key]string {
 	outmap := make(map[Key]string)
 	for k, v := range m {
-		// 		fmt.Println(k.arm)
-		// 		fmt.Println(tg[k.arm])
-		// 		fmt.Println(v)
 		var pct float64
 		pct = (float64(v) / float64(tg[k.arm])) * 100
-		// 		fmt.Println(pct)
 		c_pct := strconv.FormatFloat(pct, 'f', 2, 64)
-		// 		fmt.Println(c_pct)
-		c_stat := strconv.FormatInt(int64(v), 10) + " (" +
-			c_pct + "%)"
-		// 		fmt.Println(c_stat)
+		c_stat := strconv.FormatInt(int64(v), 10)
+		spaces := 3 - len(c_stat)
+		c_stat = strings.Repeat(" ", spaces) + c_stat + " (" + c_pct + "%)"
 		outmap[k] = c_stat
 	}
 	return outmap
@@ -409,6 +368,7 @@ func uniqueValues(m map[Key]string) []string {
 	return uValues
 }
 
+// Define the composite key to do counts of each Race value by Treatment Group (Arm)
 type KeyR struct {
 	race string
 	arm  string
@@ -417,7 +377,6 @@ type KeyR struct {
 func countRaceByTG(dm []*DM.Dmrec) map[KeyR]int {
 	var r []KeyR
 	for _, v := range dm {
-		// 		fmt.Println(v)
 		var k KeyR
 		if v.Race != nil {
 			k.race = *v.Race
@@ -446,17 +405,18 @@ func uniqueValuesR(m map[KeyR]string) []string {
 	return uValues
 }
 
+// Each count of Race Value as percentage of the N for the Treatment Group (Arm)
 func pctRaceByTG(m map[KeyR]int, tg map[string]int) map[KeyR]string {
 	outmap := make(map[KeyR]string)
 	for k, v := range m {
 		var pct float64
 		pct = (float64(v) / float64(tg[k.arm])) * 100
-		// 		fmt.Println(pct)
 		c_pct := strconv.FormatFloat(pct, 'f', 2, 64)
-		// 		fmt.Println(c_pct)
-		c_stat := strconv.FormatInt(int64(v), 10) + " (" +
-			c_pct + "%)"
-		// 		fmt.Println(c_stat)
+		c_stat := strconv.FormatInt(int64(v), 10)
+		spaces := 3 - len(c_stat)
+		
+		c_stat = strings.Repeat(" ", spaces) + c_stat
+		c_stat = c_stat + " (" + c_pct + "%)"
 		outmap[k] = c_stat
 	}
 	return outmap
@@ -465,63 +425,45 @@ func pctRaceByTG(m map[KeyR]int, tg map[string]int) map[KeyR]string {
 func main() {
 	// Read the file and dump into the slice of structs
 	dm := DM.ReadDM(infile)
-	// 	fmt.Println(dm)
 
 	// 	Compute number of subjects by treatment group
 	nTG := DM.CountByTG(dm)
-	fmt.Println(nTG)
 
 	// Select treatment groups to display i.e. Placebo, Active, Overall
 	TGs := selectTGs(nTG)
-	fmt.Println(TGs)
 
 	// Create version of dm without the SFs
 	dm2 := DM.RemoveSF(dm)
-	fmt.Printf("%T %v\n", dm2, len(dm2))
 
 	// 	Compute number of non-missing Age values by TG
 	nAge := nMiss(dm2)
-	fmt.Println(nAge)
 
 	//	Prepare the data for passing to the stats functions
 	//	Select only the TGs to display
 	//	Remove the missing values.
 	rMiss := prepareData(dm2, TGs)
-	fmt.Println(rMiss)
 
 	// 	Compute stats of age by TG
 	mean := mStat(rMiss, "Mean", 2)
-	fmt.Println(mean)
 	sd := mStat(rMiss, "SD", 2)
-	fmt.Println(sd)
 
 	//	Concatenate mean and SD values into a display string
 	meansd := make(map[string]string)
 	for k, _ := range mean {
 		meansd[k] = mean[k] + " (" + sd[k] + ")"
 	}
-	fmt.Println(meansd)
 
 	median := mStat(rMiss, "Median", 0)
-	fmt.Println(median)
 	min := mStat(rMiss, "Min", 0)
-	fmt.Println(min)
 	max := mStat(rMiss, "Max", 0)
-	fmt.Println(max)
 
 	//  N and % of subjects by gender and TG
 	keyValues := countSexByTG(dm2)
-	fmt.Println(keyValues)
-/*
 	pctMap := pctSexByTG(keyValues, nTG)
-	fmt.Println(pctMap)
-
-	raceValues := countRaceByTG(dm2)
-	fmt.Println(raceValues)
 
 	//  N and % of subjects by race and TG
+	raceValues := countRaceByTG(dm2)
 	pctRace := pctRaceByTG(raceValues, nTG)
-	fmt.Println(pctRace)
 
 	// 	Report
 	h := titles()
@@ -532,5 +474,4 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	*/
 }
