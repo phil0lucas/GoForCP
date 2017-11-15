@@ -1,3 +1,5 @@
+// A simple summary of demographic data for randomized subjects.
+// The gofpdf package is used to create the output PDF.
 package main
 
 import (
@@ -5,7 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	
+
 	"github.com/jung-kurt/gofpdf"
 	"github.com/montanaflynn/stats"
 	"github.com/phil0lucas/GoForCP/CPUtils"
@@ -48,7 +50,7 @@ func titles() *headers {
 		head3Left:   "Protocol XYZ123",
 		head4Centre: "Study XYZ123",
 		head5Centre: "Summary of Demographic Data by Treatment Arm",
-		head6Centre: "All Randomised Subjects",
+		head6Centre: "All Randomized Subjects",
 	}
 	return h
 }
@@ -79,9 +81,23 @@ func selectTGs(m map[string]int) []string {
 	return s
 }
 
+func pad(i int, width int) string {
+	c_num := strconv.Itoa(i)
+	spaces := width - len(c_num)
+	c_num = strings.Repeat(" ", spaces) + c_num
+	return c_num
+}
+
+func cpad(s string, width int) string {
+	spaces := width - len(s)
+	outstr := strings.Repeat(" ", spaces) + s
+	return outstr
+}
+
 // Report
 func WriteReport(outputFile *string, h *headers, f *footers,
-	nTG map[string]int, nAge map[string]int,
+	nTG map[string]int,
+	nAge map[string]string,
 	meansd map[string]string,
 	median map[string]string,
 	min map[string]string,
@@ -137,20 +153,15 @@ func WriteReport(outputFile *string, h *headers, f *footers,
 	pdf.Ln(8)
 
 	//	Number of Subjects By TG
-	textSlice := []string{"Number of Subjects", "N",
-		strconv.Itoa(nTG["Placebo"]),
-		strconv.Itoa(nTG["Active"]),
-		strconv.Itoa(nTG["Overall"])}
+	textSlice := []string{"Number of Subjects", "N", pad(nTG["Placebo"], 3),
+		pad(nTG["Active"], 3), pad(nTG["Overall"], 3)}
 	for i, str := range textSlice {
 		pdf.CellFormat(colWidthSlice[i], 8, str, "", 0, colJustSlice[i], false, 0, "")
 	}
 	pdf.Ln(8)
 
 	//	Number of non-missing Ages By TG
-	textSlice2 := []string{"Age (years)", "Number of Non-Missing",
-		strconv.Itoa(nAge["Placebo"]),
-		strconv.Itoa(nAge["Active"]),
-		strconv.Itoa(nAge["Overall"])}
+	textSlice2 := []string{"Age (years)", "Number of Non-Missing", nAge["Placebo"], nAge["Active"], nAge["Overall"]}
 	for i, str := range textSlice2 {
 		pdf.CellFormat(colWidthSlice[i], 8, str, "", 0, colJustSlice[i], false, 0, "")
 	}
@@ -198,7 +209,6 @@ func WriteReport(outputFile *string, h *headers, f *footers,
 
 	//	Gender
 	uV := uniqueValues(sexPct)
-	// 	fmt.Println(uV)
 	var iter int
 	var col1text string
 	sexFmt := map[string]string{"F": "Female", "M": "Male"}
@@ -222,7 +232,6 @@ func WriteReport(outputFile *string, h *headers, f *footers,
 	//	Race
 	pdf.Ln(4)
 	uVr := uniqueValuesR(racePct)
-	fmt.Println(uVr)
 	var iterR int
 	var col1textR string
 	for _, v := range uVr {
@@ -251,12 +260,11 @@ func WriteReport(outputFile *string, h *headers, f *footers,
 
 	// 	Output
 	err := pdf.OutputFileAndClose(*outputFile)
-	fmt.Println(err)
 	return err
 }
 
 // Count the number of non-missing Age values per treatment group
-func nMiss(dm []*DM.Dmrec) map[string]int {
+func nMiss(dm []*DM.Dmrec) map[string]string {
 	m := make(map[string]int)
 	for _, v := range dm {
 		if v.Age != nil {
@@ -266,7 +274,12 @@ func nMiss(dm []*DM.Dmrec) map[string]int {
 			m["Missing"]++
 		}
 	}
-	return m
+
+	mm := make(map[string]string)
+	for k, v := range m {
+		mm[k] = pad(v, 3)
+	}
+	return mm
 }
 
 // Here, the input is 'transposed' into a map where the keys are the treatment group values
@@ -291,7 +304,7 @@ func prepareData(dm []*DM.Dmrec, tg []string) map[string][]float64 {
 }
 
 // Calculate stats on each input slice in the map from the function above
-func mStat(indata map[string][]float64, stat string, dec int) map[string]string {
+func mStat(indata map[string][]float64, stat string, dec int, width int) map[string]string {
 	m := make(map[string]string)
 	for i, v := range indata {
 		var result float64
@@ -307,6 +320,9 @@ func mStat(indata map[string][]float64, stat string, dec int) map[string]string 
 			result, _ = stats.Max(v)
 		}
 		c_stat := strconv.FormatFloat(result, 'f', dec, 64)
+		if len(c_stat) < width {
+			c_stat = cpad(c_stat, width)
+		}
 		m[i] = c_stat
 	}
 	return m
@@ -322,7 +338,6 @@ type Key struct {
 func countSexByTG(dm []*DM.Dmrec) map[Key]int {
 	var r []Key
 	for _, v := range dm {
-		// 		fmt.Println(v)
 		var k Key
 		if v.Sex != nil {
 			k.sex = *v.Sex
@@ -414,7 +429,7 @@ func pctRaceByTG(m map[KeyR]int, tg map[string]int) map[KeyR]string {
 		c_pct := strconv.FormatFloat(pct, 'f', 2, 64)
 		c_stat := strconv.FormatInt(int64(v), 10)
 		spaces := 3 - len(c_stat)
-		
+
 		c_stat = strings.Repeat(" ", spaces) + c_stat
 		c_stat = c_stat + " (" + c_pct + "%)"
 		outmap[k] = c_stat
@@ -444,8 +459,9 @@ func main() {
 	rMiss := prepareData(dm2, TGs)
 
 	// 	Compute stats of age by TG
-	mean := mStat(rMiss, "Mean", 2)
-	sd := mStat(rMiss, "SD", 2)
+	mean := mStat(rMiss, "Mean", 2, 6)
+
+	sd := mStat(rMiss, "SD", 2, 5)
 
 	//	Concatenate mean and SD values into a display string
 	meansd := make(map[string]string)
@@ -453,9 +469,9 @@ func main() {
 		meansd[k] = mean[k] + " (" + sd[k] + ")"
 	}
 
-	median := mStat(rMiss, "Median", 0)
-	min := mStat(rMiss, "Min", 0)
-	max := mStat(rMiss, "Max", 0)
+	median := mStat(rMiss, "Median", 0, 3)
+	min := mStat(rMiss, "Min", 0, 3)
+	max := mStat(rMiss, "Max", 0, 3)
 
 	//  N and % of subjects by gender and TG
 	keyValues := countSexByTG(dm2)
